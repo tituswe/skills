@@ -1,15 +1,14 @@
 ---
 name: start
-description: Start work on a Linear ticket end-to-end — read the ticket via the Linear MCP, branch off main, summarize the ticket and the plan, then think/plan/execute the change, and finish by emitting a PR Summary (per CONTRIBUTING.md) to reuse when opening the PR. Use when the user says "/start GLA-10" or asks to begin work on a Linear ticket by ID.
+description: Start work on a Linear ticket end-to-end — read the ticket via the Linear MCP, branch off main, summarize the ticket and the plan, then think/plan/execute the change, and finish by committing, pushing, and opening the PR (per CONTRIBUTING.md). Use when the user says "/start GLA-10" or asks to begin work on a Linear ticket by ID.
 ---
 
 <what-to-do>
 
 Take a single Linear ticket ID (e.g. `GLA-10`) and carry it from "untouched backlog
-item" to "branch with the work done and a ready-to-paste PR Summary". You read the
-ticket, create the branch, restate what the ticket is and what you intend to do, then
-plan and implement it. You do **not** commit, push, or open the PR — you stop with the
-PR Summary in hand so the user can review the work first.
+item" to "open pull request". You read the ticket, create the branch, restate what the
+ticket is and what you intend to do, plan and implement it, then commit, push, and open
+the PR so the user can review it on GitHub.
 
 </what-to-do>
 
@@ -29,8 +28,9 @@ PR Summary in hand so the user can review the work first.
   lets multiple agents run different tickets in parallel without colliding — a single
   clone has only one working tree and one HEAD, so two agents sharing it would clobber
   each other's files regardless of branch.
-- **Stop before the PR.** This skill ends at "work done + PR Summary produced". It does
-  **not** run `git commit`, `git push`, or `gh pr create`. The user reviews first.
+- **Finish with the PR open.** This skill ends at "work done, committed, pushed, and PR
+  opened via `gh pr create`". Only open the PR once the checks in step 4 pass — never
+  push failing work.
 - **One ticket → one branch → one worktree → one PR.** Don't bundle unrelated work.
 - **Read before you write.** Read the ticket, the relevant `docs/`, `CONTEXT.md`, and the
   per-app `AGENTS.md` for whatever app you're touching before editing code.
@@ -91,27 +91,20 @@ Before writing code, post a short summary to the user covering:
   - Server: `npm install --prefix apps/server` then `npm run typecheck --prefix apps/server`
     and `npm run test --prefix apps/server`.
 
-## 5. Produce the PR Summary
+## 5. Commit, push, and open the PR
 
-Output a PR Summary the user can paste straight into the PR, following the CONTRIBUTING.md
-structure exactly:
+Once the checks in step 4 pass, commit the work on the ticket branch (a conventional
+commit message referencing the ticket ID), push the branch to `origin`, and open the PR
+with `gh pr create` against `main`.
 
-- **Title** — conventional style with the ticket ID, e.g.
-  `feat(billing): per-student / subset billing cycle (GLA-10)`.
-- **Body:**
-  1. **Why the PR** — short prose paragraph on the motivation.
-  2. **What changed** — strictly bullet points (endpoints, schema, services, UI).
-  3. **UI Tests** — *only if the PR affects the UI*; checkbox items (`- [ ] …`).
-  4. **Notes** — *only if needed*; bullets (test results, the `GLA-N` ticket, follow-ups).
-- End the body with:
+Write the PR title and body by the **Pull requests** section of the repo's
+`CONTRIBUTING.md`. Read it fresh every time and follow it exactly, including its hard
+length limits. Do not work from memory of an older version.
 
-  ```
-  🤖 Generated with [Claude Code](https://claude.com/claude-code)
-  ```
+For a UI PR, take the screenshots with the Chrome tools and save the files locally.
 
-Present the title and body clearly so they're easy to copy. Then stop — remind the user
-that nothing has been committed or pushed yet, and the PR is theirs to open when ready.
-Tell them which worktree the work lives in (e.g. `../glassroom-gla-10`), and that once the
-PR is merged they can clean it up with `git worktree remove ../glassroom-gla-10`.
+After opening the PR, report back with the PR URL and a short recap of what was done.
+Tell the user which worktree the work lives in (e.g. `../glassroom-gla-10`), and that once
+the PR is merged they can clean it up with `git worktree remove ../glassroom-gla-10`.
 
 </steps>

@@ -4,3 +4,7 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Not ours: claude.ai synced skills and third-party installs
+synced/
+use-railway/
