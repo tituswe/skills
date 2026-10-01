@@ -1,6 +1,6 @@
 ---
 name: work
-description: Work a Linear ticket end-to-end. Read the ticket via the Linear MCP, open a worktree in .claude/worktrees off main, plan, build, test (Chrome for UI changes, unit/integration/e2e coverage otherwise), then commit, push, and open the PR (per CONTRIBUTING.md). Use when the user says "/work GLA-10" (or the aliases "/start", "/do") or asks to begin work on a Linear ticket by ID.
+description: Work a Linear ticket end-to-end. Read the ticket via the Linear MCP, open a worktree in .claude/worktrees off main, plan, build, test (Chrome for UI changes, unit/integration/e2e coverage otherwise), then commit, push, and open the PR (per CONTRIBUTING.md). Use when the user says "/work GLA-10", or asks to start, do, or work on a Linear ticket by ID (e.g. "start GLA-10", "do GLA-10", "work on GLA-10").
 ---
 
 <what-to-do>
