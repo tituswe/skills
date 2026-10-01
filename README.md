@@ -9,7 +9,7 @@ These live in `~/.claude/skills/` and run as slash commands (e.g. `/ticket`).
 | Skill | What it does |
 |-------|--------------|
 | **[grill](./grill)** | Stress-tests a plan against the project's domain model and past decisions. Sharpens terms and updates CONTEXT.md and ADRs as decisions land. |
-| **[start](./start)** | Takes a Linear ticket from backlog to open PR: reads it, branches off main, plans, builds, checks, then commits, pushes and opens the PR. |
+| **[work](./work)** | Takes a Linear ticket from backlog to open PR: reads it, opens a worktree in `.claude/worktrees/`, plans, builds, tests, then commits, pushes and opens the PR. Aliases: `/start`, `/do`. |
 | **[ticket](./ticket)** | Writes or splits Linear tickets so each one is a single small PR. Hard limits keep tickets short. |
 
 ## Install

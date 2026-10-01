@@ -79,7 +79,7 @@ Count before filing. Over a limit means cut. If it cannot be cut, split.
 ### What stays out of the body
 
 - Logs, payloads, repro steps, code walkthroughs. Put them in the first
-  comment. `/start` reads comments.
+  comment. `/work` reads comments.
 - The story of how it was found. One line in Notes: "Found in GLA-448 review."
 - The same link twice. Link each issue once.
 - Nested bullets.

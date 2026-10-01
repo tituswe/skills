@@ -1,6 +1,6 @@
 ---
-name: start
-description: Alias for /work. Work a Linear ticket end-to-end by ID, e.g. "/start GLA-10".
+name: do
+description: Alias for /work. Work a Linear ticket end-to-end by ID, e.g. "/do GLA-10".
 disable-model-invocation: true
 ---
 
