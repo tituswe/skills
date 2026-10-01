@@ -11,9 +11,9 @@ A ticket is a promise about a PR. One ticket, one branch, one PR.
 
 **A ticket must fit in one PR of roughly ten files or fewer.**
 
-That number is not a style preference. Past PRs of 18-28 files got reviewed
-badly: real bugs sat next to noise, and the reviewer's attention ran out before
-the diff did. A reviewer who cannot hold the whole change in their head will
+That number is not a style preference. Big PRs get reviewed badly: real bugs
+sit next to noise, and the reviewer's attention runs out before the diff does.
+A reviewer who cannot hold the whole change in their head will
 approve it anyway, which is worse than a slow review.
 
 Before writing, estimate the files. If it is over ten, split. Do not write the
@@ -67,7 +67,7 @@ it up. It must fit on one screen.
 
 | Part | Limit |
 |---|---|
-| Title | 10 words, not counting a prefix like `[8E]`. Names the failure. |
+| Title | 10 words, not counting any prefix the project uses. Names the failure. |
 | Problem | 3 sentences, 50 words. No file paths or function names. |
 | Proposed solution | 3 bullets, one line each. |
 | Done when | 4 bullets, one line each. |
@@ -80,7 +80,7 @@ Count before filing. Over a limit means cut. If it cannot be cut, split.
 
 - Logs, payloads, repro steps, code walkthroughs. Put them in the first
   comment. `/work` reads comments.
-- The story of how it was found. One line in Notes: "Found in GLA-448 review."
+- The story of how it was found. One line in Notes: "Found in ABC-123 review."
 - The same link twice. Link each issue once.
 - Nested bullets.
 
@@ -88,11 +88,11 @@ Count before filing. Over a limit means cut. If it cannot be cut, split.
 
 - **Lead with the problem, not the solution.** The reader needs to know why
   before what.
-- **Proposed solution says what, not how.** "Use the balance, not the total,
-  for the amount and the QR" beats a function-by-function plan.
-- **"Done when" is a test list.** "A centre can request approval" is checkable.
-  "Approval works properly" is not.
-- **Name the failure.** "The row says off while messages go out" beats
+- **Proposed solution says what, not how.** "Charge the discounted total, not
+  the list price" beats a function-by-function plan.
+- **"Done when" is a test list.** "A user can reset their password from the
+  login page" is checkable. "Password reset works properly" is not.
+- **Name the failure.** "The toggle says off while emails still send" beats
   "inconsistent state".
 - Short sentences. Plain words.
 - No em-dashes. Comma, colon, parentheses or a full stop.
@@ -101,24 +101,28 @@ Count before filing. Over a limit means cut. If it cannot be cut, split.
 
 ```markdown
 ## Problem
-A part-paid invoice on the shared number asks the parent for the full total.
-The message and PayNow QR use the total. The PDF shows the balance, so they disagree.
+A cart with a discount code is charged the full price at checkout.
+The cart shows the discounted total, so the charge and the receipt disagree.
 
 ## Proposed solution
-- Manual PayNow path uses the outstanding balance for "Amount due" and the QR.
+- Checkout charges the discounted total, the same one the cart shows.
 
 ## Done when
-- Part-paid: message and QR show the balance.
-- Unpaid: shows the total, as today.
-- Fully paid: no QR is sent.
+- Discounted cart: the charge matches the cart total.
+- No discount: the charge is unchanged.
+- 100% discount: no payment step.
 
 ## Notes
-Server only, one file, no migration. Found in GLA-448 review.
+Server only, one file, no migration. Found in ABC-123 review.
 ```
 
 ## Filing it
 
-- `mcp__linear__save_issue`, team `Glassroom`, project and milestone set.
+- File with `mcp__linear__save_issue`.
+- Pick the team: the one the repo's docs (CLAUDE.md, AGENTS.md, CONTRIBUTING.md)
+  name, else the one whose ID prefix the user's tickets use. If
+  `mcp__linear__list_teams` shows only one team, use it. Otherwise ask.
+- Set the project and milestone when the work belongs to one. Ask if unsure.
 - Set `blockedBy` / `blocks` when order matters. That is what stops a ticket
   being picked up too early.
 - Put evidence in a comment right after, with `mcp__linear__save_comment`.
