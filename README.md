@@ -22,4 +22,4 @@ git clone https://github.com/tituswe/skills.git ~/.claude/skills
 
 Each subdirectory is a self-contained skill. Claude Code finds them on its own.
 
-Third-party skills (like Railway's `use-railway`) and claude.ai synced skills also land in this folder. They are gitignored.
+Third-party skills (like Railway's `use-railway` and Matt Pocock's `pr`) and claude.ai synced skills also land in this folder. They are gitignored.

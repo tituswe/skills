@@ -8,3 +8,4 @@ Thumbs.db
 # Not ours: claude.ai synced skills and third-party installs
 synced/
 use-railway/
+pr/
