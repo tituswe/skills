@@ -1,6 +1,6 @@
 ---
 name: work
-description: Work a Linear ticket end-to-end. Read the ticket via the Linear MCP, open a worktree in .claude/worktrees off the default branch, plan, build, test (Chrome for UI changes, unit/integration/e2e coverage otherwise), then commit, push, and open the PR (per the repo's own docs). Use when the user says "/work ABC-10", or asks to start, do, or work on a Linear ticket by ID (e.g. "start ABC-10", "do ABC-10", "work on ABC-10").
+description: Work a Linear ticket end-to-end. Read the ticket via the Linear MCP, open a worktree in .claude/worktrees off the default branch, plan, build, test (Chrome for UI changes, unit/integration/e2e coverage otherwise), then commit, push, and open the PR (body via the `pr` skill). Use when the user says "/work ABC-10", or asks to start, do, or work on a Linear ticket by ID (e.g. "start ABC-10", "do ABC-10", "work on ABC-10").
 ---
 
 <what-to-do>
@@ -22,7 +22,8 @@ then commit, push, and open the PR so the user can review it.
 
 - **The repo's docs win.** This skill is the default flow. Where the repo's
   `CLAUDE.md`, `AGENTS.md`, or `CONTRIBUTING.md` say otherwise (branch names, worktree
-  path, checks, PR format), follow the repo.
+  path, checks, PR title), follow the repo. One exception: always write the PR body
+  with the `pr` skill.
 - **Never touch the default branch.** Branch off an up-to-date `origin/<default>`
   (usually `main`). Never commit or push to it.
 - **Always work in a dedicated worktree.** Every run creates its own worktree (see
@@ -111,7 +112,8 @@ Prove the change works before shipping. The path depends on the change.
 - In Chrome, click through every flow the ticket touches. Include the empty, error, and
   edge states the ticket names. Check the console for errors.
 - Check each "Done when" line that the UI can show.
-- Take screenshots of the changed screens and save the files locally for the PR.
+- Take before and after screenshots of the changed screens. Save them locally for
+  the PR's Evidence section.
 
 **Not a UI change:**
 
@@ -121,7 +123,8 @@ Prove the change works before shipping. The path depends on the change.
   - **Integration:** the parts working together (routes, services, the database).
   - **End-to-end:** user flows the change affects.
 - Each "Done when" line maps to at least one test.
-- A bug fix gets a test that fails before the fix and passes after it.
+- A bug fix gets a test that fails before the fix and passes after it. Keep both
+  runs' output for the PR's Evidence section.
 - If the repo has no setup for a level the change needs, don't build one inside this
   ticket. Say so in the PR.
 
@@ -138,11 +141,11 @@ Prove the change works before shipping. The path depends on the change.
 - Commit the work on the ticket branch (a conventional commit message referencing the
   ticket ID), push the branch to `origin`, and open the PR with `gh pr create` against
   the default branch.
-- If the repo has PR rules (often in `CONTRIBUTING.md`), read them fresh every time and
-  follow them exactly, including any length limits. Do not work from memory of an older
-  version. With no rules, write a conventional title with the ticket ID, and a short
-  body: why, what changed, how it was tested.
-- For a UI PR, use the screenshots from step 5.
+- Write the PR body with the `pr` skill. Load it every time.
+- Read the repo's PR rules fresh (often in `CONTRIBUTING.md`). Follow them for the
+  title, image uploads, and footer. Where they clash with the `pr` skill on the body,
+  the `pr` skill wins. With no rules, use a conventional title with the ticket ID.
+- Put the screenshots or test output from step 5 in the Evidence section.
 - After opening the PR, report back with the PR URL and a short recap of what was done.
   Tell the user the worktree path (e.g. `.claude/worktrees/abc-10`), and that once the
   PR is merged they can clean it up from the main checkout with
