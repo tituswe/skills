@@ -83,8 +83,7 @@ then commit, push, and open the PR so the user can review it.
 - Think through the approach and form a concrete plan. Use TODOs to track multi-step
   work.
 - Plan the tests too: which unit, integration, and end-to-end tests the change needs, or
-  which UI flows to click through in step 5. List every screen the change touches:
-  each one needs before and after screenshots.
+  which UI flows to click through in step 5.
 - Before writing code, post a short summary to the user. **What the ticket is:** 1-2
   sentences in your own words, plus the done list. **What you're going to do:** the
   approach, and which parts of the repo (apps, packages, services) and layers you expect
@@ -98,9 +97,6 @@ then commit, push, and open the PR so the user can review it.
     packages, install each one you'll touch.
   - Copy any gitignored env files the code or its tests need (`.env`, `.env.local`)
     from the same path in the main checkout (`$root/...`) if they are missing.
-- **Any UI impact? Shoot "before" now.** Start the dev server and screenshot every
-  screen the change will touch, before you edit any code. Annotate them as step 5
-  says. Missed it? Capture them later from a fresh worktree off `origin/<default>`.
 - Implement the change. Keep it scoped to this ticket.
 - Update affected docs as part of the change.
 
@@ -108,7 +104,7 @@ then commit, push, and open the PR so the user can review it.
 
 Prove the change works before shipping. The path depends on the change.
 
-**UI change** (anything a user sees, however small):
+**UI change** (anything a user sees):
 
 - Load the `claude-in-chrome` skill first.
 - Start the dev server from the worktree, the way the repo's docs say. Start any
@@ -116,35 +112,10 @@ Prove the change works before shipping. The path depends on the change.
 - In Chrome, click through every flow the ticket touches. Include the empty, error, and
   edge states the ticket names. Check the console for errors.
 - Check each "Done when" line that the UI can show.
-- Take "after" screenshots of every changed screen. Required, no exceptions. Match
-  the "before" shots from step 4: same screen, same data, same window size.
-- Annotate every shot, before and after. Box, underline, or highlight each changed
-  element. Add a short caption when the mark alone doesn't say what changed. Crop to
-  the change, with enough context to place it. The `pr` skill's Evidence section has
-  the full rules.
-- Easiest way: mark the page with JS before you capture, then screenshot.
-
-  ```js
-  // Red box around a changed element, plus an optional caption under it.
-  // Clear with: document.querySelectorAll(".pr-mark").forEach((n) => n.remove())
-  function mark(selector, caption) {
-    const r = document.querySelector(selector).getBoundingClientRect();
-    const box = Object.assign(document.createElement("div"), { className: "pr-mark" });
-    box.style.cssText = `position:fixed;z-index:2147483647;pointer-events:none;
-      left:${r.left - 4}px;top:${r.top - 4}px;width:${r.width + 8}px;
-      height:${r.height + 8}px;border:3px solid #e11d48;border-radius:6px`;
-    if (caption) {
-      const tag = Object.assign(document.createElement("span"), { textContent: caption });
-      tag.style.cssText = `position:absolute;left:-3px;top:100%;margin-top:4px;
-        padding:2px 6px;background:#e11d48;color:#fff;border-radius:4px;
-        font:600 12px/1.4 system-ui;white-space:nowrap`;
-      box.append(tag);
-    }
-    document.body.append(box);
-  }
-  ```
-
-- Save the annotated shots locally for the PR's Evidence section.
+- Take before and after screenshots of the changed screens. Save them locally for
+  the PR's Evidence section.
+- Annotate each screenshot: box, underline, or highlight what changed. Add a caption
+  if needed.
 
 **Not a UI change:**
 
@@ -176,8 +147,7 @@ Prove the change works before shipping. The path depends on the change.
 - Read the repo's PR rules fresh (often in `CONTRIBUTING.md`). Follow them for the
   title, image uploads, and footer. Where they clash with the `pr` skill on the body,
   the `pr` skill wins. With no rules, use a conventional title with the ticket ID.
-- Put the annotated screenshots or test output from step 5 in the Evidence section.
-  Any UI impact means screenshots must be there.
+- Put the screenshots or test output from step 5 in the Evidence section.
 - After opening the PR, report back with the PR URL and a short recap of what was done.
   Tell the user the worktree path (e.g. `.claude/worktrees/abc-10`), and that once the
   PR is merged they can clean it up from the main checkout with
