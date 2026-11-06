@@ -114,6 +114,8 @@ Prove the change works before shipping. The path depends on the change.
 - Check each "Done when" line that the UI can show.
 - Take before and after screenshots of the changed screens. Save them locally for
   the PR's Evidence section.
+- Annotate each screenshot: box, underline, or highlight what changed. Add a caption
+  if needed.
 
 **Not a UI change:**
 
