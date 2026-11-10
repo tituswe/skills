@@ -12,7 +12,8 @@ You are the **lead**. You plan with the user, cut the plan into tickets, then ru
 
 ## 1. Check the ground
 
-- In tmux (`$TMUX` set) and agent teams on (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `teammateMode: tmux` in `~/.claude/settings.json`), so teammates open as panes in this tab.
+- Agent teams on, in-process (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `teammateMode: in-process` in `~/.claude/settings.json`), so teammates run inside this session.
+- The `team-board` plugin installed (`claude plugin list`), so `/team` shows each teammate's activity, PR and gate beside the chat.
 - In a git repo with an `origin` remote, and `gh auth status` passes.
 
 Done when all pass. Otherwise name what is missing, point to `/setup-dev-env`, and stop.

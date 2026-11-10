@@ -8,3 +8,6 @@ Thumbs.db
 # Not ours: claude.ai synced skills and third-party installs
 synced/
 use-railway/
+
+# Type files Claude Code writes beside a plugin it loads
+plugins/*/.claude-plugin/types/
