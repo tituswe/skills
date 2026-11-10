@@ -1,0 +1,15 @@
+{
+  "name": "tituswe-skills",
+  "owner": {
+    "name": "tituswe"
+  },
+  "metadata": {
+    "description": "Plugins that go with tituswe's Claude Code skills"
+  },
+  "plugins": [
+    {
+      "name": "team-board",
+      "source": "./plugins/team-board"
+    }
+  ]
+}
