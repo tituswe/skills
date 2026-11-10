@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Setup
 
-Brings a machine to the standard dev setup: tmux with Alt shortcuts, mouse copy and tabs named after their Claude session's title, tmux auto-start, Claude Code with agent teams, and the skills repo in `~/.claude/skills`.
+Brings a machine to the standard dev setup: tmux with Alt shortcuts, mouse copy and tabs named after their Claude session's title, tmux auto-start, Claude Code with agent teams and user preferences, a global git ignore, and the skills repo in `~/.claude/skills`.
 
 Every step is **idempotent**: check first, change only what differs, and report a step that already matches as `already done`. Back up any file before changing it (`<file>.bak-<YYYYMMDD>`).
 
@@ -34,7 +34,7 @@ When a command needs a password or a GUI (`sudo`, an installer, a terminal's pre
 
    Done when the block appears exactly once and `bash -n` (or `zsh -n`) on the rc file passes.
 5. **Terminal keys** per the OS file's *Terminal* section. The terminal must pass Alt (Option) keys through to tmux and must not bind them itself. Done when every conflicting binding is removed or handed to the user as a manual step.
-6. **Claude Code settings.** Deep-merge [`claude-settings.json`](claude-settings.json) into `~/.claude/settings.json`: its keys win, every other key already in the file stays. Then set `"remoteControlAtStartup": true` in `~/.claude.json`, so every session can be reached from the Claude app and mobile. That file is Claude Code's own state, rewritten while it runs: change only that key, and write through a temp file and a rename. Done when `~/.claude/settings.json` parses as JSON and contains every key from `claude-settings.json` with the same value, and `~/.claude.json` parses with `remoteControlAtStartup` true.
+6. **Claude Code config.** Deep-merge [`claude-settings.json`](claude-settings.json) into `~/.claude/settings.json`: its keys win, every other key already in the file stays. Then set `"remoteControlAtStartup": true` in `~/.claude.json`, so every session can be reached from the Claude app and mobile. That file is Claude Code's own state, rewritten while it runs: change only that key, and write through a temp file and a rename. Copy [`user-claude.md`](user-claude.md) to `~/.claude/CLAUDE.md` (user preferences for every session). Copy [`git-ignore`](git-ignore) to git's global ignore file, `~/.config/git/ignore` (or the path in `git config --global core.excludesFile`, if set), creating its folder if needed; it keeps per-machine Claude Code permissions out of every repo. Done when `~/.claude/settings.json` parses as JSON and contains every key from `claude-settings.json` with the same value, `~/.claude.json` parses with `remoteControlAtStartup` true, and `cmp` finds `~/.claude/CLAUDE.md` identical to `user-claude.md` and the global ignore file identical to `git-ignore`.
 7. **Skills repo.** Install `https://github.com/tituswe/skills.git` into `~/.claude/skills`:
    - Already a git repo with that origin: `git -C ~/.claude/skills pull --ff-only`.
    - Missing or empty: `git clone https://github.com/tituswe/skills.git ~/.claude/skills`.
