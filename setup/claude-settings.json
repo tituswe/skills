@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "defaultMode": "auto"
+  },
+  "theme": "dark",
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "tui": "fullscreen",
+  "teammateMode": "tmux",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
