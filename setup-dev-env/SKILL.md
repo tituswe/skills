@@ -34,7 +34,7 @@ When a command needs a password or a GUI (`sudo`, an installer, a terminal's pre
 
    Done when the block appears exactly once and `bash -n` (or `zsh -n`) on the rc file passes.
 5. **Terminal keys** per the OS file's *Terminal* section. The terminal must pass Alt (Option) keys through to tmux and must not bind them itself. Done when every conflicting binding is removed or handed to the user as a manual step.
-6. **Claude Code settings.** Deep-merge [`claude-settings.json`](claude-settings.json) into `~/.claude/settings.json`: its keys win, every other key already in the file stays. Done when `~/.claude/settings.json` parses as JSON and contains every key from `claude-settings.json` with the same value.
+6. **Claude Code settings.** Deep-merge [`claude-settings.json`](claude-settings.json) into `~/.claude/settings.json`: its keys win, every other key already in the file stays. Then set `"remoteControlAtStartup": true` in `~/.claude.json`, so every session can be reached from the Claude app and mobile. That file is Claude Code's own state, rewritten while it runs: change only that key, and write through a temp file and a rename. Done when `~/.claude/settings.json` parses as JSON and contains every key from `claude-settings.json` with the same value, and `~/.claude.json` parses with `remoteControlAtStartup` true.
 7. **Skills repo.** Install `https://github.com/tituswe/skills.git` into `~/.claude/skills`:
    - Already a git repo with that origin: `git -C ~/.claude/skills pull --ff-only`.
    - Missing or empty: `git clone https://github.com/tituswe/skills.git ~/.claude/skills`.
