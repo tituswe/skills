@@ -13,6 +13,9 @@ These live in `~/.claude/skills/` and run as slash commands (e.g. `/pr`).
 | **[pr-review](./pr-review)** | Reviews a PR with parallel pillar reviewers (code, security, tests, maintainability, UI, data), verifies each finding, then posts it as an inline comment labelled with its pillar. |
 | **[ticket](./ticket)** | Turns a spec or description into short tickets, sliced into one-PR pieces, and files them in any tracker (Linear by default). |
 | **[pr](./pr)** | Writes PR bodies that are fast to review. Copy of [Matt Pocock's `pr`](https://github.com/mattpocock/skills/tree/main/skills/engineering/pr) (MIT), plus one line on annotating screenshots. |
+| **[grill-with-docs](./grill-with-docs)** | Grills you on a plan or design and writes its glossary and ADRs as you go, by running `grilling` and `domain-modeling`. Copy of [Matt Pocock's `grill-with-docs`](https://github.com/mattpocock/skills/tree/main/skills/engineering/grill-with-docs) (MIT). |
+| **[grilling](./grilling)** | Interviews you in numbered rounds, with a recommended answer for each question, until every decision in the plan is settled. Copy of [Matt Pocock's `grilling`](https://github.com/mattpocock/skills/tree/main/skills/productivity/grilling) (MIT). |
+| **[domain-modeling](./domain-modeling)** | Challenges fuzzy terms against `GLOSSARY.md`, updates it as terms settle, and offers ADRs for hard-to-reverse decisions. Copy of [Matt Pocock's `domain-modeling`](https://github.com/mattpocock/skills/tree/main/skills/engineering/domain-modeling) (MIT). |
 | **[writing-for-agents](./writing-for-agents)** | Guides writing docs an agent reads: skills, `AGENTS.md`, `CLAUDE.md`. Copy of [Matt Pocock's `writing-for-agents`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-for-agents) (MIT). |
 
 ## Install
