@@ -8,6 +8,7 @@ These live in `~/.claude/skills/` and run as slash commands (e.g. `/pr`).
 
 | Skill | What it does |
 |-------|--------------|
+| **[ticket](./ticket)** | Writes short tickets that fit on one screen and files them in any tracker (Linear by default). |
 | **[pr](./pr)** | Writes PR bodies that are fast to review. Copy of [Matt Pocock's `pr`](https://github.com/mattpocock/skills/tree/main/skills/engineering/pr) (MIT), plus one line on annotating screenshots. |
 | **[writing-for-agents](./writing-for-agents)** | Guides writing docs an agent reads: skills, `AGENTS.md`, `CLAUDE.md`. Copy of [Matt Pocock's `writing-for-agents`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-for-agents) (MIT). |
 
