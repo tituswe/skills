@@ -8,7 +8,7 @@ These live in `~/.claude/skills/` and run as slash commands (e.g. `/pr`).
 
 | Skill | What it does |
 |-------|--------------|
-| **[setup](./setup)** | Sets up a new machine (Linux, WSL or macOS): tmux with Alt shortcuts, Claude Code settings with agent teams, and this repo. |
+| **[setup-dev-env](./setup-dev-env)** | Sets up a new machine (Linux, WSL or macOS): tmux with Alt shortcuts, Claude Code settings with agent teams, and this repo. |
 | **[code](./code)** | Codes a ticket or task in a new worktree: plan, build, prove, commit. Stops before the PR. |
 | **[pr-review](./pr-review)** | Reviews a PR with parallel pillar reviewers (code, security, tests, maintainability, UI, data), verifies each finding, then posts it as an inline comment labelled with its pillar. |
 | **[ticket](./ticket)** | Turns a spec or description into short tickets, sliced into one-PR pieces, and files them in any tracker (Linear by default). |

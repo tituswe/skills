@@ -1,6 +1,6 @@
 # Linux
 
-The Linux branch of [`/setup`](SKILL.md), covering native Linux and WSL. The step numbers there decide the order; this file fills in the Linux parts.
+The Linux branch of [`/setup-dev-env`](SKILL.md), covering native Linux and WSL. The step numbers there decide the order; this file fills in the Linux parts.
 
 Detect WSL with `grep -qi microsoft /proc/version`. Several sections split on it.
 

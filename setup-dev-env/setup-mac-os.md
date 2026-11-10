@@ -1,6 +1,6 @@
 # macOS
 
-The macOS branch of [`/setup`](SKILL.md). The step numbers there decide the order; this file fills in the macOS parts.
+The macOS branch of [`/setup-dev-env`](SKILL.md). The step numbers there decide the order; this file fills in the macOS parts.
 
 ## Values
 
