@@ -4,7 +4,7 @@ Shared rules for every pillar reviewer.
 
 ## What counts
 
-A finding is a **failure scenario** you can point to: concrete input or steps, the wrong outcome, and the `path:line` that causes it. Flag what the diff introduces or breaks. Report every finding you can back this way: the orchestrator filters later.
+A finding is a **failure scenario** you can point to: concrete input or steps, the wrong outcome, and the `path:line` that causes it. Line numbers are on the PR head; a range is `path:start-end`. Flag what the diff introduces or breaks. Report every finding you can back this way: the orchestrator filters later.
 
 ## Severity
 
@@ -31,7 +31,7 @@ Problems the diff did not cause still count: mark them `Introduced: no`.
 - **<one-line title>** `path:line` · <severity> · <pillar>
   Scenario: <input or steps> → <wrong outcome>
   Evidence: `path:line`, `path:line`
-  Fix: <one line, or a diff when it fully fixes it>
+  Fix: <one line, or a short diff>
   Rule: <the checklist item, or the quoted repo rule>
   Introduced: yes | no
 ```
