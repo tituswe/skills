@@ -46,7 +46,7 @@ When a command needs a password or a GUI (`sudo`, an installer, a terminal's pre
    | Keys | Expect |
    |---|---|
    | `cd` somewhere, then Alt+D / Alt+Shift+D | split right / split down, new pane opens in the same directory |
-   | Alt+T, then Alt+1 | new tab in the same directory, back to tab 1 |
+   | Alt+T, then Alt+1 | new tab in the same directory, back to tab 1; the selected tab is blue |
    | Alt+arrows | move between panes; Left/Right at the edge changes tab |
    | Alt+W once, wait 2 s, then Alt+W twice | first press only shows a prompt; the double press closes the pane |
    | Start `claude` in a new tab and give it a task | within ~5 s the tab takes the session's title |
