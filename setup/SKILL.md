@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Setup
 
-Brings a machine to the standard dev setup: tmux with Alt shortcuts and mouse copy, tmux auto-start, Claude Code with agent teams, and the skills repo in `~/.claude/skills`.
+Brings a machine to the standard dev setup: tmux with Alt shortcuts, mouse copy and tabs named after their Claude session, tmux auto-start, Claude Code with agent teams, and the skills repo in `~/.claude/skills`.
 
 Every step is **idempotent**: check first, change only what differs, and report a step that already matches as `already done`. Back up any file before changing it (`<file>.bak-<YYYYMMDD>`).
 
@@ -16,7 +16,7 @@ When a command needs a password or a GUI (`sudo`, an installer, a terminal's pre
 
 1. **Pick the OS file.** An argument (`linux`, `mac-os`) wins. Else run `uname -s`: `Darwin` → [`setup-mac-os.md`](setup-mac-os.md), `Linux` → [`setup-linux.md`](setup-linux.md). Anything else: stop and say it is unsupported. Read the whole OS file now. Done when you know the OS file, the clipboard command, the shell rc file and the terminal app.
 2. **Install packages** per the OS file's *Install* section. Done when `tmux -V` (3.2 or later), `git --version` and `claude --version` all succeed.
-3. **tmux config.** Copy [`tmux.conf`](tmux.conf) to `~/.tmux.conf`, replacing `@CLIPBOARD@` with the OS file's clipboard command. Carry any line from the old file that the template does not cover into its *Machine-specific* section. Apply the OS file's *tmux* section, if it has one. Done when `tmux -L setup-check -f ~/.tmux.conf new-session -d \; kill-server` exits 0, and, inside tmux, `tmux source-file ~/.tmux.conf` exits 0.
+3. **tmux config.** Copy [`tmux.conf`](tmux.conf) to `~/.tmux.conf`, replacing `@CLIPBOARD@` with the OS file's clipboard command. Carry any line from the old file that the template does not cover into its *Machine-specific* section. Copy [`claude-tab-names.sh`](claude-tab-names.sh) to `~/.config/tmux/claude-tab-names.sh` and make it executable: tmux runs it to name each tab after the Claude session in it. Apply the OS file's *tmux* section, if it has one. Done when `tmux -L setup-check -f ~/.tmux.conf new-session -d \; kill-server` exits 0, and, inside tmux, `tmux source-file ~/.tmux.conf` exits 0 and running the script exits 0.
 4. **Shell start-up.** Append this block to the OS file's shell rc file, once (skip if `# setup: tmux autostart` is already there):
 
    ```sh
@@ -49,6 +49,7 @@ When a command needs a password or a GUI (`sudo`, an installer, a terminal's pre
    | Alt+T, then Alt+1 | new tab, back to tab 1 |
    | Alt+arrows | move between panes; Left/Right at the edge changes tab |
    | Alt+W | closes the pane |
+   | Start `claude` in a new tab | within ~5 s the tab takes the session's name |
    | Click a pane or tab | selects it |
    | Drag over text, paste elsewhere | text was copied |
 
