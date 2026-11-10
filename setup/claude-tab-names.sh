@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Names each tmux tab (window) after the main Claude Code session in it.
+# Names each tmux tab (window) after the title of the main Claude Code session in it.
 # Run by tmux from status-right every status-interval; prints nothing.
 # Main session = the live Claude session in the window's lowest-numbered pane
 # (teammates split off the lead, so the lead keeps the first pane).
@@ -9,7 +9,7 @@
 dir="$HOME/.claude/sessions"
 [ -d "$dir" ] || exit 0
 
-# One line per live session: <window_id> <pane_index> <name>, then keep the lowest pane per window.
+# One line per live session: <window_id> <pane_index> <title>, then keep the lowest pane per window.
 mains="$(
   for f in "$dir"/*.json; do
     [ -e "$f" ] || continue
@@ -17,10 +17,11 @@ mains="$(
     kill -0 "$pid" 2>/dev/null || continue
     json="$(cat "$f")"
     pane="$(printf '%s' "$json" | sed -nE 's/.*"tmux":"[^"]*\.(%[0-9]+)".*/\1/p')"
-    name="$(printf '%s' "$json" | sed -nE 's/.*"name":"([^"]*)".*/\1/p')"
-    [ -n "$pane" ] && [ -n "$name" ] || continue
-    loc="$(tmux display -p -t "$pane" '#{window_id}	#{pane_index}' 2>/dev/null)" || continue
-    [ -n "$loc" ] && printf '%s\t%s\n' "$loc" "$name"
+    [ -n "$pane" ] || continue
+    # Window, pane index and Claude's title for the session, minus its leading status glyph (✳, spinner).
+    loc="$(tmux display -p -t "$pane" '#{window_id}	#{pane_index}	#{pane_title}' 2>/dev/null)" || continue
+    loc="$(printf '%s' "$loc" | LC_ALL=C sed -E 's/	[^	A-Za-z0-9]+ +([^	]*)$/	\1/')"
+    [ -n "$loc" ] && printf '%s\n' "$loc"
   done | sort -t "$(printf '\t')" -k1,1 -k2,2n | awk -F '\t' '!seen[$1]++ { print $1 "\t" $3 }'
 )"
 
