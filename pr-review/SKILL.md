@@ -39,7 +39,7 @@ A docs-only PR gets `maintainability` alone. Done when each pillar is in or out,
 Launch one `general-purpose` subagent per pillar, all in a single message so they run at once. Give each this prompt, filled in (`<skill dir>` is `${CLAUDE_SKILL_DIR}`):
 
 ```text
-You are the <pillar> reviewer for PR #<n>. Read-only: change no files, post nothing.
+You are the <pillar> reviewer for PR #<n>. Change nothing in the user's checkout. Post nothing.
 Diff: `gh pr diff <n>`. Skip: <set-aside files>.
 Read code at the PR head with `git show <sha>:<path>` and `git grep <pattern> <sha>`.
 Intent: <one sentence>. Repo rules: <rule files>.
@@ -55,14 +55,22 @@ Done when every pillar has returned.
 
 - Merge duplicates: one root cause is one finding, labelled with every pillar that raised it.
 - Drop findings an existing PR comment already raises.
-- For each finding, open the cited lines at the head and test the scenario against the real code: read the callers, grep, or run a quick command. Keep it only when the code proves it.
+- For each finding, open the cited lines at the head and test the scenario against the real code: read the callers, grep, or run a quick command. Keep it only when the code proves it. A UI finding is also proven when its screenshot shows the failure.
 - With more than 8 findings, split verification across parallel subagents.
 
 Done when every finding is proven or dropped.
 
 ## 5. Post
 
-Post one review that holds every inline comment. Write the JSON to a temp file outside the repo, then:
+**Screenshots first.** Review comments take no attachments, so upload them in one PR comment and reuse the hosted URLs. Write `shots.md` with each finding's title above `![<title>](<path>)`, then:
+
+```bash
+gh pr comment <n> --body-file shots.md --attach '<path>#<title>' --attach '<path>#<title>'
+```
+
+`gh` swaps each path for its hosted URL and prints the comment's URL. Read the body back with `gh api repos/{owner}/{repo}/issues/comments/<id>` (the id ends that URL) and take each image's URL.
+
+**Then the review.** Post one review that holds every inline comment. Write the JSON to a temp file outside the repo, then:
 
 ```bash
 gh api repos/{owner}/{repo}/pulls/<n>/reviews --method POST --input <file>
@@ -89,8 +97,12 @@ Each inline comment:
 
 <the failure scenario, one or two sentences>
 
+![<title>](<hosted URL>)
+
 Fix: <one line, or a short diff>
 ```
+
+The image line is for findings with a screenshot.
 
 For example: `**Security · blocker:** Webhook accepts unsigned payloads.`
 

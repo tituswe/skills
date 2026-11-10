@@ -31,6 +31,7 @@ Problems the diff did not cause still count: mark them `Introduced: no`.
 - **<one-line title>** `path:line` · <severity> · <pillar>
   Scenario: <input or steps> → <wrong outcome>
   Evidence: `path:line`, `path:line`
+  Screenshot: <path, UI findings only>
   Fix: <one line, or a short diff>
   Rule: <the checklist item, or the quoted repo rule>
   Introduced: yes | no
