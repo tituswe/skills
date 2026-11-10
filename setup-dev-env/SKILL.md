@@ -1,5 +1,5 @@
 ---
-name: setup
+name: setup-dev-env
 description: Set up a new machine with tmux, Alt shortcuts, Claude Code settings and this skills repo. Linux (incl. WSL) or macOS.
 disable-model-invocation: true
 ---
@@ -40,7 +40,7 @@ When a command needs a password or a GUI (`sudo`, an installer, a terminal's pre
    - Missing or empty: `git clone https://github.com/tituswe/skills.git ~/.claude/skills`.
    - Has other files (synced or third-party skills): `git init -b main`, `git remote add origin <url>`, `git fetch origin`, `git checkout -t origin/main` inside it. Leave the existing files in place; if a tracked path collides with one, stop and ask.
 
-   Done when `git -C ~/.claude/skills status` shows branch `main` tracking `origin/main`, and `setup/SKILL.md` exists there.
+   Done when `git -C ~/.claude/skills status` shows branch `main` tracking `origin/main`, and `setup-dev-env/SKILL.md` exists there.
 8. **Report.** One line per step: `done`, `already done`, or `manual: <what the user must do>`. Then this check list for the user to try in a new terminal window:
 
    | Keys | Expect |
