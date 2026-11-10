@@ -34,7 +34,7 @@ Each ticket moves: `ready` (no open blockers) → `coding` → `in review` → `
 - **Spawn.** For each `ready` ticket, spawn one teammate with the brief below, named after the ticket ID in lowercase. At most 3 teammates code at once; the rest wait as `ready`.
 - **Review.** When a teammate reports a PR, run the `pr-review` skill on it yourself. You did not write the code, so your review is not marking its own work. Send the teammate the review's URL.
 - **Fix.** The teammate fixes every blocker and important finding, and the nits it agrees with, then pushes and reports. Review again. After 3 rounds with blockers still open, stop and put the PR in front of the user.
-- **Approve.** A review with no blockers and no important findings, and `gh pr checks` green, makes the PR `approved`. Ask the user to merge it: give the PR link, the ticket, and the last review's counts. The user can give standing approval ("merge clean PRs"); then merge without asking.
+- **Approve.** A review whose gate passed on the PR's current head, and `gh pr checks` green, makes the PR `approved`. Any push after that, including merging the default branch in, clears the gate: back to `in review`. Ask the user to merge it: give the PR link, the ticket, and the last review's counts. The user can give standing approval ("merge clean PRs"); then merge without asking.
 - **Merge.** Merge the way the repo's docs say, else `gh pr merge <n> --merge --delete-branch`. Set the ticket to Done if the tracker did not. Tell the teammate to remove its worktree, then shut it down.
 - **Unblock.** After each merge, tell the teammates with open PRs to merge the default branch into theirs and push. Recompute `ready` and spawn for the newly ready tickets.
 

@@ -11,7 +11,7 @@ These live in `~/.claude/skills/` and run as slash commands (e.g. `/pr`).
 | **[setup-dev-env](./setup-dev-env)** | Sets up a new machine (Linux, WSL or macOS): tmux with Alt shortcuts, Claude Code settings with agent teams, your user `CLAUDE.md`, a global git ignore, and this repo. |
 | **[project](./project)** | Runs a project as team lead: grills the plan, files tickets, then spawns teammates that code, open PRs and fix review findings until each ticket merges. |
 | **[code](./code)** | Codes a ticket or task in a new worktree: plan, build, prove, commit. Stops before the PR. |
-| **[pr-review](./pr-review)** | Reviews a PR with parallel pillar reviewers (code, security, tests, maintainability, UI, data), verifies each finding, then posts it as an inline comment labelled with its pillar. |
+| **[pr-review](./pr-review)** | Reviews a PR with parallel pillar reviewers (code, security, tests, maintainability, UI, data), verifies each finding, posts it as an inline comment labelled with its pillar, then sets a `pr-review` commit status that a repo can require before merging. |
 | **[ticket](./ticket)** | Turns a spec or description into short tickets, sliced into one-PR pieces, and files them in any tracker (Linear by default). |
 | **[pr](./pr)** | Writes PR bodies that are fast to review. Copy of [Matt Pocock's `pr`](https://github.com/mattpocock/skills/tree/main/skills/engineering/pr) (MIT), plus one line on annotating screenshots. |
 | **[grill-with-docs](./grill-with-docs)** | Grills you on a plan or design and writes its glossary and ADRs as you go, by running `grilling` and `domain-modeling`. Copy of [Matt Pocock's `grill-with-docs`](https://github.com/mattpocock/skills/tree/main/skills/engineering/grill-with-docs) (MIT). |
