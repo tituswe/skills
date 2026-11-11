@@ -38,7 +38,7 @@ A Claude Code panel beside the chat that shows your agent team at a glance: what
 - **Its phase**, from the PR: `coding`, `merge conflicts`, `awaiting review`, `in review`, `fixing`, `CI running`, `CI failing`, `ready to merge`, `merged`. A PR with merge conflicts is never ready to merge, and a teammate still working is never shown as waiting on you to merge.
 - **Waiting on you**: a real approval dialog, a question (`AskUserQuestion`), a PR ready to merge, or the lead's turn ending on a question.
 - **The lead**: its own activity and the subagents it runs (review pillars).
-- **Your usage**, at the foot: the current session (5-hour) and this week's (7-day) rate-limit windows as claude.ai's usage page shows them, each with its bar and reset time, and whether this week's pace reaches the reset. The engine pushes new figures after each turn, so there is no polling. Shown on a Claude subscription only; it reads "No reading yet" until the first reply of a session.
+- **Your usage**, at the foot: the current session (5-hour) and this week's (7-day) limits as claude.ai's usage page shows them, each with its bar and reset time, and whether this week's pace reaches the reset. While the panel is open it asks your account every 60 s, and up to every 15 s while a session is working, so it counts usage from every terminal, claude.ai and the apps. The request goes through Claude Code's own sign-in: the panel never sees your token. That account endpoint is undocumented; if it fails, the panel says so and shows this session's own figures, which update after each reply. Claude subscriptions only.
 
 Teammates must run in-process (`"teammateMode": "in-process"` in `~/.claude/settings.json`). A teammate in a tmux pane of its own shows only working or idle.
 
