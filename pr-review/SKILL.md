@@ -32,7 +32,7 @@ Done when you have the head SHA, the changed files, the intent in one sentence, 
 | `security` | code changes |
 | `tests` | code changes |
 | `maintainability` | always |
-| `ui` | code changes, backend included: a backend change can break the screens that use it |
+| `ui` | code changes |
 | `data` | migrations, schema, API routes or shared types change |
 
 A docs-only PR gets `maintainability` alone. Done when each pillar is in or out, with a reason.
