@@ -649,6 +649,8 @@ export const register: Register = on => {
     ])
     const now = Date.now()
     const leadAgents = all.filter(a => !isTeammate(a) && a.parentId === undefined && isLive(a))
+    // Whose conversation is on screen: an agent's id, or none for the lead's own.
+    // That name is drawn inverse, the lead's as much as a teammate's.
     const viewing = e.props.view.agentId
 
     const rows = all
@@ -675,7 +677,7 @@ export const register: Register = on => {
               <Text bold>lead</Text>
             </Button>
           ) : (
-            <Text bold>lead</Text>
+            <Text bold inverse>lead</Text>
           )}
           <Text dimColor>
             {leadAgents.length > 0

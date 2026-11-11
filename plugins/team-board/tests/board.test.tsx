@@ -91,6 +91,32 @@ test('the panel shows each teammate, its phase, its activity and its PR', async 
   await ui.unmount()
 })
 
+test('the name whose conversation is in view is highlighted, the lead included', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'team' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('agent.list', () => ({ value: AGENTS }))
+  on('ui.panes', () => ({ value: [] }))
+  on('clock.every', () => ({ value: undefined }))
+  on('process.run', () => ({
+    value: { exitCode: 1, stdout: '', stderr: 'not a repo', isStdoutTruncated: false, isStderrTruncated: false },
+  }))
+  await $.command.run({ command: 'team', args: '', ...RUN })
+
+  const highlighted = async (view: { agentId?: string }) => {
+    const ui = await $.ui.mount({ ...PANE, props: { ...PANE.props, view }, surface: 'terminal' })
+    const names = await ui.findAll({ type: 'Text', text: /^(lead|abc-\d+)$/ })
+    const lit = names.filter(n => n.props.inverse).map(n => n.text)
+    await ui.unmount()
+    return { lit, shown: names.map(n => n.text).sort() }
+  }
+
+  // The lead's own conversation: the lead is lit, no teammate is.
+  expect(await highlighted({})).toEqual({ lit: ['lead'], shown: ['abc-479', 'abc-497', 'abc-498', 'lead'] })
+  // A teammate's conversation: that teammate alone.
+  expect((await highlighted({ agentId: 'a2' })).lit).toEqual(['abc-497'])
+  expect((await highlighted({ agentId: 'a3' })).lit).toEqual(['abc-498'])
+})
+
 test('/team opens the panel, and closes it when it is open', async ($, on) => {
   let isOpen = false
   on('command.register', () => ({ value: { command: 'team' } }))

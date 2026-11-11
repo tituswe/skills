@@ -1,6 +1,6 @@
 {
   "name": "team-board",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "A side panel listing the team's teammates: what each is doing, its PR, CI and the pr-review gate",
   "types": "./types/index.d.ts"
 }
