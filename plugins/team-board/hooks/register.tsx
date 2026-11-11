@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, ThemeKey, ToolCallInput } from 'claude-code'
 
-import type { Activity, ActivityKind, AgentRow, Board, CheckState, PrRow } from '../types'
+import type { Activity, ActivityKind, AgentRow, Board, CheckState, PrRow, UsageWindow } from '../types'
 
 const PANE = 'team-board'
 const TITLE = 'Team'
@@ -27,6 +27,9 @@ const prs = atom({ plugin: 'team-board', key: 'prs' } as const, [] as PrRow[], {
 })
 const board = atom({ plugin: 'team-board', key: 'board' } as const, {} as Board, {
   shape: 'board-1',
+})
+const usage = atom({ plugin: 'team-board', key: 'usage' } as const, [] as UsageWindow[], {
+  shape: 'usage-1',
 })
 
 type Api = EngineInterface
@@ -363,6 +366,86 @@ const CHECK: Record<CheckState, { mark: string; color: ThemeKey }> = {
   none: { mark: '–', color: 'subtle' },
 }
 
+// ---------- plan usage ----------
+
+const HOUR_MS = 3_600_000
+const DAY_MS = 24 * HOUR_MS
+const WEEK_MS = 7 * DAY_MS
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** What each window is called on claude.ai's usage page, and the order they take. */
+const WINDOW: Record<string, { label: string; order: number }> = {
+  five_hour: { label: 'Current session', order: 0 },
+  seven_day: { label: 'This week', order: 1 },
+  spend_limit: { label: 'Spend limit', order: 2 },
+}
+
+const windowLabel = (kind: string) => WINDOW[kind]?.label ?? kind.replace(/_/g, ' ')
+
+/** The windows in claude.ai's order: session, week, then anything else. */
+export function orderWindows(list: UsageWindow[]): UsageWindow[] {
+  const rank = (w: UsageWindow) => WINDOW[w.kind]?.order ?? 9
+  return [...list].sort((a, b) => rank(a) - rank(b))
+}
+
+/** `8:10 PM`, in the machine's local time. */
+export function clockTime(at: Date): string {
+  const h = at.getHours()
+  const m = String(at.getMinutes()).padStart(2, '0')
+  return `${h % 12 || 12}:${m} ${h < 12 ? 'AM' : 'PM'}`
+}
+
+/** `Resets at 8:10 PM` within the day, else `Resets Saturday 12:00 PM`. */
+export function resetLine(resetsAt: string | undefined, now: number): string | undefined {
+  if (!resetsAt) return undefined
+  const at = new Date(resetsAt)
+  if (Number.isNaN(at.getTime())) return undefined
+  if (at.getTime() <= now) return 'Resetting now'
+  return at.getTime() - now < DAY_MS
+    ? `Resets at ${clockTime(at)}`
+    : `Resets ${DAYS[at.getDay()]} ${clockTime(at)}`
+}
+
+/** `56% used`; one decimal only below 10, where it still says something. */
+export const percentLabel = (p: number) => `${p < 10 ? Math.round(p * 10) / 10 : Math.round(p)}% used`
+
+/** Blue while there is room, amber from 75%, red from 90%. */
+export const barColor = (p: number): ThemeKey => (p >= 90 ? 'error' : p >= 75 ? 'warning' : 'suggestion')
+
+/** A bar `width` cells wide: the used part and the rest. */
+export function barCells(percent: number, width: number): { used: number; left: number } {
+  const used = Math.round((Math.min(100, Math.max(0, percent)) / 100) * width)
+  return { used, left: width - used }
+}
+
+/**
+ * Whether this week's pace reaches the reset: the share used against the share of
+ * the week gone. Says nothing in the week's first six hours, when a pace means little.
+ */
+export function paceLine(week: UsageWindow | undefined, now: number): { text: string; isAhead: boolean } | undefined {
+  if (!week?.resetsAt) return undefined
+  const reset = new Date(week.resetsAt).getTime()
+  if (Number.isNaN(reset) || reset <= now) return undefined
+  const gone = now - (reset - WEEK_MS)
+  if (gone < 6 * HOUR_MS) return undefined
+  const day = DAYS[new Date(reset).getDay()]
+  if (week.percentUsed >= 100) return { text: `Weekly limit reached. It resets ${day}.`, isAhead: true }
+  const projected = (week.percentUsed / gone) * WEEK_MS
+  if (projected <= 100) {
+    return { text: `On track. You should reach ${day}'s reset with room to spare.`, isAhead: false }
+  }
+  const hitsAt = new Date(now + ((100 - week.percentUsed) / week.percentUsed) * gone)
+  const when = hitsAt.getTime() - now < DAY_MS ? clockTime(hitsAt) : `${DAYS[hitsAt.getDay()]} ${clockTime(hitsAt)}`
+  return { text: `At this pace you'll hit the weekly limit ${when}, before ${day}'s reset.`, isAhead: true }
+}
+
+const sameUsage = (a: UsageWindow[], b: UsageWindow[]) => JSON.stringify(a) === JSON.stringify(b)
+
+async function setUsage($: Api, list: readonly UsageWindow[]) {
+  const rows = list.map(w => ({ kind: w.kind, percentUsed: w.percentUsed, resetsAt: w.resetsAt }))
+  if (!sameUsage(await read($, usage), rows)) await update($, usage, () => rows)
+}
+
 // ---------- the hooks ----------
 
 export const register: Register = on => {
@@ -386,9 +469,17 @@ export const register: Register = on => {
     )
     quietly(refreshAgents($))
     quietly(refreshPrs($))
+    quietly($.session.usage().then(u => setUsage($, u.rateLimits)))
 
     return next(e)
   })
+
+  // The engine pushes the rate-limit windows after each turn, and whenever one
+  // moves a whole point: no polling.
+  on('session.measure', async ($, e, next) => {
+    if (e.changed.includes('rateLimits')) quietly(setUsage($, e.rateLimits))
+    return next(e)
+  }).catch(($, e, next) => next(e))
 
   on('command.run', { command: 'team' }, async ($, e) => {
     const [verb, ...rest] = e.args.trim().split(/\s+/)
@@ -482,11 +573,12 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
-    const [doing, all, prList, state] = await Promise.all([
+    const [doing, all, prList, state, windows] = await Promise.all([
       read($, activity),
       read($, agents),
       read($, prs),
       read($, board),
+      read($, usage),
       read($, tick), // subscribes the panel to the elapsed-time redraws
     ])
     const now = Date.now()
@@ -535,8 +627,47 @@ export const register: Register = on => {
       </Box>
     )
 
+    // Plan usage, at the foot: claude.ai's usage page in the panel's width.
+    const barWidth = Math.max(10, e.props.bodyColumns - 1)
+    const pace = paceLine(windows.find(w => w.kind === 'seven_day'), now)
+    const usageBlock = (
+      <Box flexDirection="column" marginTop={1}>
+        <Text dimColor>{'─'.repeat(barWidth)}</Text>
+        <Text bold>Your usage</Text>
+        {windows.length === 0 ? (
+          <Text dimColor wrap="wrap">No reading yet: it comes with the next reply.</Text>
+        ) : null}
+        {pace ? (
+          <Text color={pace.isAhead ? 'warning' : undefined} dimColor={!pace.isAhead} wrap="wrap">
+            {pace.text}
+          </Text>
+        ) : null}
+        {orderWindows(windows).map(w => {
+          const bar = barCells(w.percentUsed, barWidth)
+          const reset = resetLine(w.resetsAt, now)
+          return (
+            <Box flexDirection="column" marginTop={1}>
+              <Box justifyContent="space-between">
+                <Text>{windowLabel(w.kind)}</Text>
+                <Text dimColor>{percentLabel(w.percentUsed)}</Text>
+              </Box>
+              <Box>
+                <Text color={barColor(w.percentUsed)}>{'━'.repeat(bar.used)}</Text>
+                <Text color="subtle">{'━'.repeat(bar.left)}</Text>
+              </Box>
+              {reset ? <Text dimColor>{reset}</Text> : null}
+            </Box>
+          )
+        })}
+      </Box>
+    )
+
+    // Docked, the panel fills the pane's height so usage sits flush at the foot;
+    // inline, the frame fits the tree, so it stays right under the rows.
+    const isDocked = e.props.placement === 'dock'
+
     return (
-      <Box flexDirection="column">
+      <Box flexDirection="column" minHeight={isDocked ? e.props.scroll.bodyRows : undefined}>
         {waiting > 0 ? (
           <Box marginBottom={1}>
             <Text color="warning" bold>
@@ -591,6 +722,9 @@ export const register: Register = on => {
         {state.error ? (
           <Text color="warning" wrap="truncate-end">PRs: {state.error} {' (/team repo <path>)'}</Text>
         ) : null}
+
+        {isDocked ? <Box flexGrow={1} /> : null}
+        {usageBlock}
       </Box>
     )
   })
