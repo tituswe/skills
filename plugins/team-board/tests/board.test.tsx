@@ -1,7 +1,8 @@
 import { expect, test } from 'claude-code/testing'
 import type { AgentInfo } from 'claude-code'
 
-import { activityLine, endsInQuestion, groupOf, leadNeed, nowLine, teammateNeed } from '../hooks/register'
+import { activityLine, endsInQuestion, groupOf, leadNeed, mergePrs, nowLine, parsePrs, phaseOf, prFor, teammateNeed } from '../hooks/register'
+import type { PrRow } from '../types'
 import type { AgentRow } from '../types'
 
 const PANE = {
@@ -184,7 +185,7 @@ test('a model request streams through unchanged, and the panel follows it', asyn
 test('who waits on the person, and the order rows take', () => {
   const at = 1_000_000
   const row: AgentRow = { id: 'a1', name: 'abc-479', type: 'teammate', status: 'running', description: 'abc-479' }
-  const open = { number: 392, title: 't', branch: 'b', state: 'OPEN', isDraft: false, ci: 'pass', gate: 'pass' } as const
+  const open = { number: 392, title: 't', branch: 'b', state: 'OPEN', isDraft: false, hasConflicts: false, ci: 'pass', gate: 'pass' } as const
   const approval = { kind: 'approval', text: 'waiting for approval: Bash', since: at } as const
   const asking = { kind: 'tool', text: 'waiting for your answer', since: at, isForYou: true } as const
 
@@ -302,4 +303,89 @@ test('only a real approval dialog marks an agent as waiting on you', async ($, o
   const after = await header()
   expect(after.found).toBeUndefined()
   expect(after.line).toContain('running: List files ✓')
+})
+
+const pr = (number: number, more: Partial<PrRow> = {}): PrRow => ({
+  number, title: `PR ${number}`, branch: `feat/x-${number}`, state: 'OPEN', isDraft: false,
+  hasConflicts: false, ci: 'pass', gate: 'pass', ...more,
+})
+
+test('a teammate finds its PR by the PR its description names, else by its ticket ID', () => {
+  const list = [pr(401, { branch: 'docs/end-date', title: 'docs: end date' }), pr(399, { branch: 'feat/abc-480-export' })]
+  expect(prFor('docs-401', list, 'Look after PR 401')?.number).toBe(401)
+  expect(prFor('abc-480', list, 'Look after PR 399')?.number).toBe(399)
+  expect(prFor('abc-480', list, 'abc-480')?.number).toBe(399)
+  // A description naming a PR that isn't listed falls back to the ticket ID.
+  expect(prFor('abc-480', list, 'Look after PR 999')?.number).toBe(399)
+  expect(prFor('docs-401', list, 'docs-401')).toBeUndefined()
+})
+
+test('merge conflicts block ready to merge, and a working teammate is not waiting on you', () => {
+  const row: AgentRow = { id: 'a1', name: 'abc-479', type: 'teammate', status: 'idle', description: 'abc-479' }
+  const clashing = pr(391, { hasConflicts: true })
+  const phase = phaseOf(row, clashing, 0)
+  expect(phase.label).toBe('merge conflicts')
+  expect(teammateNeed(row, undefined, clashing, phase)).toBeUndefined()
+
+  const ready = pr(391)
+  expect(phaseOf(row, ready, 0).label).toBe('ready to merge')
+  expect(teammateNeed(row, undefined, ready, { label: 'ready to merge' })).toBe('#391 ready to merge')
+  expect(teammateNeed({ ...row, status: 'running' }, undefined, ready, { label: 'ready to merge' })).toBeUndefined()
+
+  const parsed = parsePrs(JSON.stringify([
+    { number: 1, title: 't', headRefName: 'b', state: 'OPEN', isDraft: false, mergeable: 'CONFLICTING' },
+    { number: 2, title: 't', headRefName: 'b', state: 'OPEN', isDraft: false, mergeStateStatus: 'DIRTY' },
+    { number: 3, title: 't', headRefName: 'b', state: 'OPEN', isDraft: false, mergeable: 'MERGEABLE', mergeStateStatus: 'UNSTABLE' },
+  ]))
+  expect(parsed.map(p => p.hasConflicts)).toEqual([true, true, false])
+  // Open PRs keep their check data; the recent list only adds closed and merged ones.
+  expect(mergePrs([pr(5, { gate: 'fail' })], [pr(5), pr(4, { state: 'MERGED' })]).map(p => `${p.number}${p.gate}`)).toEqual([
+    '5fail',
+    '4pass',
+  ])
+})
+
+test('the panel fetches checks for open PRs only, and says when gh output is cut off', async ($, on) => {
+  const TEAM: AgentInfo[] = [
+    { id: 'a1', teammateId: 'docs-401@team', name: 'docs-401', description: 'Look after PR 401', type: 'teammate', status: 'idle' },
+  ]
+  const OPEN = [{
+    number: 401, title: 'docs: end date', headRefName: 'docs/end-date', state: 'OPEN', isDraft: false,
+    mergeable: 'CONFLICTING', mergeStateStatus: 'DIRTY', statusCheckRollup: [check('server tests'), gate('SUCCESS')],
+  }]
+  const calls: string[][] = []
+  let isCutOff = false
+  on('command.register', () => ({ value: { command: 'team' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [] }))
+  on('agent.list', () => ({ value: TEAM }))
+  on('process.run', (_, e) => {
+    if (e.argv[0] !== 'gh') return { value: { exitCode: 0, stdout: '/repo\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    calls.push([...e.argv])
+    const isOpen = e.argv.includes('open')
+    return {
+      value: {
+        exitCode: 0, stdout: isOpen ? JSON.stringify(OPEN) : '[]', stderr: '',
+        isStdoutTruncated: isOpen && isCutOff, isStderrTruncated: false,
+      },
+    }
+  })
+
+  await $.command.run({ command: 'team', args: 'repo /repo', ...RUN })
+  await $.command.run({ command: 'team', args: '', ...RUN }) // loads the agent list
+  const all = calls.find(argv => argv.includes('all'))
+  expect(all?.join(' ')).not.toContain('statusCheckRollup')
+  expect(calls.find(argv => argv.includes('open'))?.join(' ')).toContain('statusCheckRollup')
+
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^merge conflicts$/ }))?.text).toBe('merge conflicts')
+  expect((await ui.find({ type: 'Text', text: /conflicts$/ }))?.text).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /ready to merge/ })).toBeUndefined()
+  await ui.unmount()
+
+  isCutOff = true
+  await $.command.run({ command: 'team', args: 'repo /repo', ...RUN })
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /^PRs:/ }))?.text).toContain('output was cut off')
+  await ui.unmount()
 })

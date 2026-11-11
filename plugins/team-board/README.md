@@ -22,8 +22,8 @@ A Claude Code panel beside the chat that shows your agent team at a glance: what
 
 - **Teammates**, in groups: waiting on you, working, idle, done. Alphabetical within a group.
 - **What each is doing now**: `thinking…`, `writing a reply…`, `editing booking.ts`, `running: … · 1m 23s`, `waiting for approval: Bash`, `idle · waiting on lead`.
-- **Its PR**, matched by the ticket ID in the teammate's name (`abc-479` → a branch or title holding `ABC-479`): CI and the `pr-review` gate, refreshed every 30 s and right after any `gh pr` or `git push`.
-- **Its phase**, from the PR: `coding`, `awaiting review`, `in review`, `fixing`, `CI running`, `CI failing`, `ready to merge`, `merged`.
+- **Its PR**, the one its spawn description names (`Look after PR 401`), else matched by the ticket ID in the teammate's name (`abc-479` → a branch or title holding `ABC-479`): CI, merge conflicts and the `pr-review` gate, refreshed every 30 s and right after any `gh pr` or `git push`.
+- **Its phase**, from the PR: `coding`, `merge conflicts`, `awaiting review`, `in review`, `fixing`, `CI running`, `CI failing`, `ready to merge`, `merged`. A PR with merge conflicts is never ready to merge, and a teammate still working is never shown as waiting on you to merge.
 - **Waiting on you**: a real approval dialog, a question (`AskUserQuestion`), a PR ready to merge, or the lead's turn ending on a question.
 - **The lead**: its own activity and the subagents it runs (review pillars).
 

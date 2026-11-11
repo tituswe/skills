@@ -38,6 +38,8 @@ export type PrRow = {
   branch: string
   state: 'OPEN' | 'MERGED' | 'CLOSED'
   isDraft: boolean
+  /** GitHub can't merge it as it stands: a conflict with its base. Always false for a closed PR. */
+  hasConflicts: boolean
   /** Every check and status on the head commit but the gate. */
   ci: CheckState
   /** The `pr-review` commit status on the head commit. */
