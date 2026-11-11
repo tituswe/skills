@@ -32,7 +32,7 @@ Run the `ticket` skill on the spec. It slices the work, confirms the list with t
 
 Each ticket moves: `ready` (no open blockers) → `coding` → `in review` → `fixing` ⇄ `in review` → `approved` → `merged`.
 
-- **Spawn.** For each `ready` ticket, spawn one teammate with the brief below, named after the ticket ID in lowercase. At most 3 teammates code at once; the rest wait as `ready`.
+- **Spawn.** For each `ready` ticket, spawn one teammate with the brief below. Name it for the work: the ticket ID, then two or three words saying what the ticket does, lowercase and hyphenated, 24 characters at most (`gla-478-billing-plans`, not `gla-478`). Keep the ID first: the team panel finds a teammate's PR by it. At most 3 teammates code at once; the rest wait as `ready`.
 - **Review.** When a teammate reports a PR, run the `pr-review` skill on it yourself. You did not write the code, so your review is not marking its own work. Send the teammate the review's URL.
 - **Fix.** The teammate fixes every blocker and important finding, and the nits it agrees with, then pushes and reports. Review again. After 3 rounds with blockers still open, the PR is blocked: stop and ask the user (see **Asking the user**).
 - **Approve.** A review whose gate passed on the PR's current head, and `gh pr checks` green, makes the PR `approved`. Any push after that, including merging the default branch in, clears the gate: back to `in review`. Ask the user to merge it (see **Asking the user**). The user can give standing approval ("merge clean PRs"); then merge without asking.

@@ -397,6 +397,8 @@ test('a teammate finds its PR by the PR its description names, else by its ticke
   // A description naming a PR that isn't listed falls back to the ticket ID.
   expect(prFor('abc-480', list, 'Look after PR 999')?.number).toBe(399)
   expect(prFor('docs-401', list, 'docs-401')).toBeUndefined()
+  // A name that says what the work is still finds its PR by the ID at its front.
+  expect(prFor('abc-480-csv-export', list, 'abc-480-csv-export')?.number).toBe(399)
 })
 
 test('merge conflicts block ready to merge, and a working teammate is not waiting on you', () => {
