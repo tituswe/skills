@@ -18,8 +18,9 @@ Use this template for writing the PR body:
 
 ## Evidence
 
-- **Before:** <screenshot/output/failing test run>
-  **After:** <screenshot/output/passing test run>
+| <surface> | Before | After |
+|---|---|---|
+| <state shown> | <screenshot> | <screenshot> |
 
 ## Merge Danger
 
@@ -157,12 +158,12 @@ You may use one of these, you may use several, it is unlikely you will use all o
 
 ### Evidence
 
-Concrete evidence that the change works. Show a before and after.
+Only screenshots: a before and an after of every surface the change affects, side by side. A surface is whatever a person sees: a page, a panel, a dialog, a terminal screen, a CLI's output, an email or message, a generated file.
 
-Screenshots are S-tier - when the environment is set up for it and the change is visual.
-Annotate them directly: box, underline, or highlight what changed. Add a caption if needed.
-
-Execution-based evidence is A-tier. Test results, console output. Show the exact test that now fails and passes, using pseudocode.
+- One table per surface, one row per state the change touches (empty, error, each role or view). Before is the default branch, after is the PR's head, taken from the same state.
+- Annotate each shot: box or underline what changed. The table's row says what the state is.
+- Take them from the running app, not mockups. Reference each by its local path in the body (`![After: empty state](./after-empty.png)`) and pass the files with `gh pr create --body-file <body> --attach <path>` (or `gh pr edit`): `gh` uploads them and rewrites the references. Paths are relative to the body file's folder.
+- No test runs, logs or console output here: CI shows those. A change with no surface (a refactor, a pure backend change, a skill's text) says so in one line and shows instead the one before and after a reader would see: a request and its response, a command and its output.
 
 ### Merge Danger
 
