@@ -14,6 +14,8 @@ export type Activity = {
   toolUseId?: string
   /** A tool call that waits on the person (`AskUserQuestion`). */
   isForYou?: true
+  /** The PRs an `AskUserQuestion` names (`#392`), so their teammates' rows show it too. */
+  asksAbout?: number[]
   /** An `idle` whose turn ended on a question to the person. */
   isQuestion?: true
 }
