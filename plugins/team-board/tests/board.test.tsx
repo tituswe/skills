@@ -1,7 +1,10 @@
 import { expect, test } from 'claude-code/testing'
 import type { AgentInfo } from 'claude-code'
 
-import { activityLine, endsInQuestion, groupOf, leadNeed, mergePrs, nowLine, parsePrs, phaseOf, prFor, teammateNeed } from '../hooks/register'
+import {
+  activityLine, barCells, clockTime, endsInQuestion, groupOf, leadNeed, mergePrs, nowLine, orderWindows, paceLine,
+  parsePrs, percentLabel, phaseOf, prFor, resetLine, teammateNeed,
+} from '../hooks/register'
 import type { PrRow } from '../types'
 import type { AgentRow } from '../types'
 
@@ -387,5 +390,90 @@ test('the panel fetches checks for open PRs only, and says when gh output is cut
   await $.command.run({ command: 'team', args: 'repo /repo', ...RUN })
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /^PRs:/ }))?.text).toContain('output was cut off')
+  await ui.unmount()
+})
+
+test('plan usage: reset times, percentages, bars and the weekly pace', () => {
+  const now = new Date(2026, 10, 11, 15, 0).getTime() // Wed 11 Nov, 3:00 PM local
+  expect(clockTime(new Date(2026, 10, 11, 20, 10))).toBe('8:10 PM')
+  expect(clockTime(new Date(2026, 10, 11, 0, 5))).toBe('12:05 AM')
+  expect(clockTime(new Date(2026, 10, 14, 12, 0))).toBe('12:00 PM')
+  expect(resetLine(new Date(2026, 10, 11, 20, 10).toISOString(), now)).toBe('Resets at 8:10 PM')
+  expect(resetLine(new Date(2026, 10, 14, 12, 0).toISOString(), now)).toBe('Resets Saturday 12:00 PM')
+  expect(resetLine(undefined, now)).toBeUndefined()
+
+  expect(percentLabel(56)).toBe('56% used')
+  expect(percentLabel(7.25)).toBe('7.3% used')
+  expect(barCells(56, 40)).toEqual({ used: 22, left: 18 })
+  expect(barCells(130, 10)).toEqual({ used: 10, left: 0 })
+
+  expect(orderWindows([
+    { kind: 'seven_day', percentUsed: 40 },
+    { kind: 'five_hour', percentUsed: 56 },
+  ]).map(w => w.kind)).toEqual(['five_hour', 'seven_day'])
+
+  // 40% used with the week 4.5 days gone (resets Sat noon): on track.
+  const saturday = new Date(2026, 10, 14, 12, 0).toISOString()
+  expect(paceLine({ kind: 'seven_day', percentUsed: 40, resetsAt: saturday }, now)).toEqual({
+    text: "On track. You should reach Saturday's reset with room to spare.",
+    isAhead: false,
+  })
+  // 90% used by the same point: ahead of pace.
+  const ahead = paceLine({ kind: 'seven_day', percentUsed: 90, resetsAt: saturday }, now)
+  expect(ahead?.isAhead).toBe(true)
+  expect(ahead?.text).toContain("before Saturday's reset")
+  // In the week's first hours, no pace yet.
+  const fresh = new Date(now + 7 * 86_400_000 - 3_600_000).toISOString()
+  expect(paceLine({ kind: 'seven_day', percentUsed: 2, resetsAt: fresh }, now)).toBeUndefined()
+})
+
+test('the panel shows plan usage at its foot, and follows the engine\'s measurements', async ($, on) => {
+  const inFiveHours = new Date(Date.now() + 2 * 3_600_000).toISOString()
+  const inThreeDays = new Date(Date.now() + 3 * 86_400_000).toISOString()
+  on('command.register', () => ({ value: { command: 'team' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [] }))
+  on('agent.list', () => ({ value: [] }))
+  on('clock.every', () => ({ value: undefined }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('process.run', () => ({
+    value: { exitCode: 1, stdout: '', stderr: 'no repo', isStdoutTruncated: false, isStderrTruncated: false },
+  }))
+  on('session.usage', () => ({
+    value: {
+      startedAt: 0,
+      context: { window: 200_000 },
+      rateLimits: [
+        { kind: 'seven_day', percentUsed: 40, resetsAt: inThreeDays },
+        { kind: 'five_hour', percentUsed: 56, resetsAt: inFiveHours },
+      ],
+    },
+  }))
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.command.run({ command: 'team', args: '', ...RUN })
+
+  let ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const text = async (pattern: RegExp) => (await ui.find({ type: 'Text', text: pattern }))?.text
+  expect(await text(/^Your usage$/)).toBe('Your usage')
+  expect(await text(/^Current session$/)).toBe('Current session')
+  expect(await text(/^56% used$/)).toBe('56% used')
+  expect(await text(/^This week$/)).toBe('This week')
+  expect(await text(/^40% used$/)).toBe('40% used')
+  expect(await text(/^Resets at /)).toMatch(/^Resets at \d{1,2}:\d\d [AP]M$/)
+  await ui.unmount()
+
+  await $.session.measure({
+    context: { window: 200_000 },
+    rateLimits: [
+      { kind: 'five_hour', percentUsed: 61, resetsAt: inFiveHours },
+      { kind: 'seven_day', percentUsed: 41, resetsAt: inThreeDays },
+    ],
+    changed: ['rateLimits'],
+  })
+  ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await text(/^61% used$/)).toBe('61% used')
+  expect(await text(/^41% used$/)).toBe('41% used')
   await ui.unmount()
 })

@@ -55,9 +55,21 @@ export type Board = {
   isAutoOpened?: boolean
 }
 
+/** One of the account's rate-limit windows, as the last API response reported it. */
+export type UsageWindow = {
+  /** `five_hour` (the current session), `seven_day` (this week), or a gateway's `spend_limit`. */
+  kind: string
+  /** 0 to 100, past 100 on an exceeded spend limit. */
+  percentUsed: number
+  /** When the window resets, as an ISO 8601 timestamp. */
+  resetsAt?: string
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'team-board': {
+      /** The account's plan usage; empty off a subscription or before the first reply. */
+      usage: Shaped<UsageWindow[]>
       activity: Shaped<Record<string, Activity>>
       agents: Shaped<AgentRow[]>
       prs: Shaped<PrRow[]>
