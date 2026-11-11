@@ -5,13 +5,13 @@ A Claude Code panel beside the chat that shows your agent team at a glance: what
 ```
  ! 1 needs you
 
- ! abc-497   ready to merge
+ ! abc-497-empty-input  ready to merge
    #392 ready to merge
    #392 open · CI ✓ · gate ✓
- ● abc-479   fixing
+ ● abc-479-widget       fixing
    running: Run the server tests · 1m 23s
    #391 open · CI ✓ · gate ✗ 0 blockers, 1 important open
- ○ abc-498   awaiting review
+ ○ abc-498-csv-export   awaiting review
    idle · waiting on lead
    #393 open · CI … · gate –
  lead  2 agents running
@@ -34,9 +34,9 @@ A Claude Code panel beside the chat that shows your agent team at a glance: what
 
 - **Teammates**, in groups: waiting on you, working, idle, done. Alphabetical within a group.
 - **What each is doing now**: `thinking…`, `writing a reply…`, `editing booking.ts`, `running: … · 1m 23s`, `waiting for approval: Bash`, `idle · waiting on lead`.
-- **Its PR**, the one its spawn description names (`Look after PR 401`), else matched by the ticket ID in the teammate's name (`abc-479` → a branch or title holding `ABC-479`): CI, merge conflicts and the `pr-review` gate, refreshed every 30 s and right after any `gh pr` or `git push`.
+- **Its PR**, the one its spawn description names (`Look after PR 401`), else matched by the ticket ID in the teammate's name (`abc-479-widget` → a branch or title holding `ABC-479`): CI, merge conflicts and the `pr-review` gate, refreshed every 30 s and right after any `gh pr` or `git push`.
 - **Its phase**, from the PR: `coding`, `merge conflicts`, `awaiting review`, `in review`, `fixing`, `CI running`, `CI failing`, `ready to merge`, `merged`. A PR with merge conflicts is never ready to merge, and a teammate still working is never shown as waiting on you to merge.
-- **Waiting on you**: a real approval dialog, a question (`AskUserQuestion`), a PR ready to merge, or the lead's turn ending on a question.
+- **Waiting on you**: a real approval dialog, a question (`AskUserQuestion`, in its own words: `asks you: Merge #392?`), a PR ready to merge, or the lead's turn ending on a question. A question from the lead that names a PR (`#392`, `PR 392`) also marks that PR's teammate as waiting on you; it counts once.
 - **The lead**: its own activity and the subagents it runs (review pillars).
 - **Your usage**, at the foot: the current session (5-hour) and this week's (7-day) limits as claude.ai's usage page shows them, each with its bar and reset time, and whether this week's pace reaches the reset. While the panel is open it asks your account every 60 s, and up to every 15 s while a session is working, so it counts usage from every terminal, claude.ai and the apps. The request goes through Claude Code's own sign-in: the panel never sees your token. That account endpoint is undocumented; if it fails, the panel says so and shows this session's own figures, which update after each reply. Claude subscriptions only.
 
