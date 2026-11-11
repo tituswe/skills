@@ -9,6 +9,18 @@ const TITLE = 'Team'
 const LEAD = 'main'
 const AGENT_POLL_MS = 3_000
 const PR_POLL_MS = 30_000
+/** How often the open panel asks the account for its usage: one small GET. */
+const USAGE_POLL_MS = 60_000
+/** A turn's measurement asks again sooner, but not more often than this. */
+const USAGE_NUDGE_MS = 15_000
+/** How long an account reading outranks this session's own rate-limit figures. */
+const ACCOUNT_FRESH_MS = 3 * USAGE_POLL_MS
+/**
+ * The account's usage, as claude.ai's usage page and Claude Code's /usage read it:
+ * every surface's usage (other terminals, claude.ai, the apps), not this session's
+ * alone. Undocumented, so any failure falls back to the session's own figures.
+ */
+const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 const TICK_MS = 5_000
 
 // Change a tag when that value's fields change: it declines what an earlier
@@ -301,6 +313,7 @@ async function refreshAgents($: Api) {
   if (!state.isAutoOpened && rows.some(isTeammate)) {
     await update($, board, b => ({ ...b, isAutoOpened: true }))
     quietly($.ui.open({ id: PANE, title: TITLE }))
+    quietly(refreshAccountUsage($))
   }
 }
 
@@ -446,6 +459,52 @@ async function setUsage($: Api, list: readonly UsageWindow[]) {
   if (!sameUsage(await read($, usage), rows)) await update($, usage, () => rows)
 }
 
+type AccountWindow = { utilization?: number | null; resets_at?: string | null } | null | undefined
+
+/** The usage endpoint's body → the session and weekly windows it reports. */
+export function parseAccountUsage(text: string): UsageWindow[] {
+  const raw = JSON.parse(text) as Record<string, AccountWindow>
+  return ['five_hour', 'seven_day'].flatMap(kind => {
+    const w = raw[kind]
+    if (!w || typeof w.utilization !== 'number') return []
+    return [{ kind, percentUsed: Math.round(w.utilization * 10) / 10, resetsAt: w.resets_at ?? undefined }]
+  })
+}
+
+const isPaneOpen = async ($: Api) => (await $.ui.panes()).some(pane => pane.id === PANE)
+
+/**
+ * Asks the account for its usage. The engine holds the credential: the panel gets
+ * an opaque handle, never the token, and the engine signs the request.
+ */
+async function refreshAccountUsage($: Api) {
+  try {
+    const auth = await $.session.authorize()
+    if (!auth) throw new Error('not signed in to a Claude plan')
+    const res = await $.http.fetch(USAGE_URL, {
+      auth: auth.handle,
+      headers: { 'anthropic-beta': 'oauth-2025-04-20' },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    await setUsage($, parseAccountUsage(res.text))
+    await update($, board, b => ({ ...b, usageAt: Date.now(), usageError: undefined }))
+  } catch (err) {
+    const usageError = err instanceof Error ? err.message : String(err)
+    if ((await read($, board)).usageError !== usageError) await update($, board, b => ({ ...b, usageError }))
+  }
+}
+
+/**
+ * A turn's measurement: this session's figures stand in while no fresh account
+ * reading exists, and the open panel asks the account again, at most every 15s.
+ */
+async function onMeasure($: Api, list: readonly UsageWindow[]) {
+  const { usageAt } = await read($, board)
+  const age = usageAt === undefined ? Infinity : Date.now() - usageAt
+  if (age >= ACCOUNT_FRESH_MS) await setUsage($, list)
+  if (age >= USAGE_NUDGE_MS && (await isPaneOpen($))) await refreshAccountUsage($)
+}
+
 // ---------- the hooks ----------
 
 export const register: Register = on => {
@@ -459,6 +518,10 @@ export const register: Register = on => {
 
     $.clock.every(AGENT_POLL_MS, () => quietly(refreshAgents($)))
     $.clock.every(PR_POLL_MS, () => quietly(refreshPrs($)))
+    // Usage only while the panel is open: nobody reads it otherwise.
+    $.clock.every(USAGE_POLL_MS, () =>
+      quietly(isPaneOpen($).then(isOpen => (isOpen ? refreshAccountUsage($) : undefined))),
+    )
     // Redraw elapsed times, only while some tool call is running.
     $.clock.every(TICK_MS, () =>
       quietly(
@@ -470,14 +533,16 @@ export const register: Register = on => {
     quietly(refreshAgents($))
     quietly(refreshPrs($))
     quietly($.session.usage().then(u => setUsage($, u.rateLimits)))
+    // A reload keeps the panel open: read the account at once, not a minute on.
+    quietly(isPaneOpen($).then(isOpen => (isOpen ? refreshAccountUsage($) : undefined)))
 
     return next(e)
   })
 
-  // The engine pushes the rate-limit windows after each turn, and whenever one
-  // moves a whole point: no polling.
+  // The engine pushes this session's rate-limit windows after each turn, and
+  // whenever one moves a whole point: the fallback, and a cue to ask again.
   on('session.measure', async ($, e, next) => {
-    if (e.changed.includes('rateLimits')) quietly(setUsage($, e.rateLimits))
+    if (e.changed.includes('rateLimits')) quietly(onMeasure($, e.rateLimits))
     return next(e)
   }).catch(($, e, next) => next(e))
 
@@ -501,6 +566,7 @@ export const register: Register = on => {
     const opened = await $.ui.open({ id: PANE, title: TITLE })
     quietly(refreshAgents($))
     quietly(refreshPrs($))
+    quietly(refreshAccountUsage($))
     return { text: opened.isPlaced ? 'Team panel opened.' : `Team panel waiting: ${opened.reason}` }
   })
 
@@ -629,14 +695,18 @@ export const register: Register = on => {
 
     // Plan usage, at the foot: claude.ai's usage page in the panel's width.
     const barWidth = Math.max(10, e.props.bodyColumns - 1)
+    const isAccountFresh = state.usageAt !== undefined && now - state.usageAt < ACCOUNT_FRESH_MS
     const pace = paceLine(windows.find(w => w.kind === 'seven_day'), now)
     const usageBlock = (
       <Box flexDirection="column" marginTop={1}>
         <Text dimColor>{'─'.repeat(barWidth)}</Text>
         <Text bold>Your usage</Text>
-        {windows.length === 0 ? (
-          <Text dimColor wrap="wrap">No reading yet: it comes with the next reply.</Text>
+        {state.usageError && !isAccountFresh ? (
+          <Text dimColor wrap="wrap">
+            Account usage unavailable ({state.usageError}): showing this session's figures.
+          </Text>
         ) : null}
+        {windows.length === 0 ? <Text dimColor wrap="wrap">No reading yet.</Text> : null}
         {pace ? (
           <Text color={pace.isAhead ? 'warning' : undefined} dimColor={!pace.isAhead} wrap="wrap">
             {pace.text}

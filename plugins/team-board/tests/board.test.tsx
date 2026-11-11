@@ -3,7 +3,7 @@ import type { AgentInfo } from 'claude-code'
 
 import {
   activityLine, barCells, clockTime, endsInQuestion, groupOf, leadNeed, mergePrs, nowLine, orderWindows, paceLine,
-  parsePrs, percentLabel, phaseOf, prFor, resetLine, teammateNeed,
+  parseAccountUsage, parsePrs, percentLabel, phaseOf, prFor, resetLine, teammateNeed,
 } from '../hooks/register'
 import type { PrRow } from '../types'
 import type { AgentRow } from '../types'
@@ -475,5 +475,85 @@ test('the panel shows plan usage at its foot, and follows the engine\'s measurem
   ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
   expect(await text(/^61% used$/)).toBe('61% used')
   expect(await text(/^41% used$/)).toBe('41% used')
+  await ui.unmount()
+})
+
+const ACCOUNT_BODY = (session: number, week: number) => JSON.stringify({
+  five_hour: { utilization: session, resets_at: new Date(Date.now() + 2 * 3_600_000).toISOString() },
+  seven_day: { utilization: week, resets_at: new Date(Date.now() + 3 * 86_400_000).toISOString() },
+  seven_day_opus: null,
+  extra_usage: { is_enabled: false },
+})
+
+test('the account usage body becomes the session and weekly windows', () => {
+  const windows = parseAccountUsage(ACCOUNT_BODY(76, 42.04))
+  expect(windows.map(w => [w.kind, w.percentUsed])).toEqual([['five_hour', 76], ['seven_day', 42]])
+  expect(parseAccountUsage(JSON.stringify({ five_hour: null, seven_day: { utilization: null } }))).toEqual([])
+})
+
+test('the open panel shows the account usage, and it outranks the session figures', async ($, on) => {
+  const fetched: Array<{ url: string; auth?: string }> = []
+  let body = ACCOUNT_BODY(76, 42)
+  on('command.register', () => ({ value: { command: 'team' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [{ id: 'team-board', title: 'Team', isShown: true, isFocused: false, isPlaced: true }] }))
+  on('ui.close', () => ({ value: undefined }))
+  on('agent.list', () => ({ value: [] }))
+  on('clock.every', () => ({ value: undefined }))
+  on('process.run', () => ({
+    value: { exitCode: 1, stdout: '', stderr: 'no repo', isStdoutTruncated: false, isStderrTruncated: false },
+  }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
+  on('session.authorize', () => ({ value: { handle: 'h1', kind: 'bearer' } }))
+  on('http.fetch', (_, e) => {
+    fetched.push({ url: e.url, auth: e.init?.auth })
+    return { value: { status: 200, ok: true, headers: {}, text: body } }
+  })
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const text = async (pattern: RegExp) => (await ui.find({ type: 'Text', text: pattern }))?.text
+  expect(fetched[0]).toEqual({ url: 'https://api.anthropic.com/api/oauth/usage', auth: 'h1' })
+  expect(await text(/^76% used$/)).toBe('76% used')
+  expect(await text(/^42% used$/)).toBe('42% used')
+
+  // A fresh account reading is not overwritten by this session's own figures.
+  body = ACCOUNT_BODY(77, 42)
+  await $.session.measure({
+    context: { window: 200_000 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 50 }, { kind: 'seven_day', percentUsed: 30 }],
+    changed: ['rateLimits'],
+  })
+  expect(await text(/^50% used$/)).toBeUndefined()
+  await ui.unmount()
+})
+
+test('when the account usage fails, the session figures stand in and the panel says why', async ($, on) => {
+  on('command.register', () => ({ value: { command: 'team' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [{ id: 'team-board', title: 'Team', isShown: true, isFocused: false, isPlaced: true }] }))
+  on('agent.list', () => ({ value: [] }))
+  on('clock.every', () => ({ value: undefined }))
+  on('process.run', () => ({
+    value: { exitCode: 1, stdout: '', stderr: 'no repo', isStdoutTruncated: false, isStderrTruncated: false },
+  }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.usage', () => ({ value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [] } }))
+  on('session.authorize', () => ({ value: { handle: 'h1', kind: 'bearer' } }))
+  on('http.fetch', () => ({ value: { status: 401, ok: false, headers: {}, text: '' } }))
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+
+  await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+  await $.session.measure({
+    context: { window: 200_000 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 50 }],
+    changed: ['rateLimits'],
+  })
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const text = async (pattern: RegExp) => (await ui.find({ type: 'Text', text: pattern }))?.text
+  expect(await text(/^50% used$/)).toBe('50% used')
+  expect(await text(/unavailable/)).toContain('HTTP 401')
   await ui.unmount()
 })

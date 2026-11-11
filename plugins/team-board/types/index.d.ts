@@ -53,9 +53,13 @@ export type Board = {
   fetchedAt?: number
   error?: string
   isAutoOpened?: boolean
+  /** When the account usage endpoint last answered, in ms since the epoch. */
+  usageAt?: number
+  /** Why the last account usage fetch failed; cleared by the next that works. */
+  usageError?: string
 }
 
-/** One of the account's rate-limit windows, as the last API response reported it. */
+/** One of the account's rate-limit windows: from the account usage endpoint, else this session's last API response. */
 export type UsageWindow = {
   /** `five_hour` (the current session), `seven_day` (this week), or a gateway's `spend_limit`. */
   kind: string
@@ -68,7 +72,7 @@ export type UsageWindow = {
 declare module 'claude-code' {
   interface PluginState {
     'team-board': {
-      /** The account's plan usage; empty off a subscription or before the first reply. */
+      /** The account's plan usage; empty off a subscription or before the first reading. */
       usage: Shaped<UsageWindow[]>
       activity: Shaped<Record<string, Activity>>
       agents: Shaped<AgentRow[]>
