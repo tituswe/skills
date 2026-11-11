@@ -34,14 +34,23 @@ Each ticket moves: `ready` (no open blockers) → `coding` → `in review` → `
 
 - **Spawn.** For each `ready` ticket, spawn one teammate with the brief below. Name it for the work: the ticket ID, then two or three words saying what the ticket does, lowercase and hyphenated, 24 characters at most (`gla-478-billing-plans`, not `gla-478`). Keep the ID first: the team panel finds a teammate's PR by it. At most 3 teammates code at once; the rest wait as `ready`.
 - **Review.** When a teammate reports a PR, run the `pr-review` skill on it yourself. You did not write the code, so your review is not marking its own work. Send the teammate the review's URL.
-- **Fix.** The teammate fixes every blocker and important finding, and the nits it agrees with, then pushes and reports. Review again. After 3 rounds with blockers still open, stop and put the PR in front of the user.
-- **Approve.** A review whose gate passed on the PR's current head, and `gh pr checks` green, makes the PR `approved`. Any push after that, including merging the default branch in, clears the gate: back to `in review`. Ask the user to merge it: give the PR link, the ticket, and the last review's counts. The user can give standing approval ("merge clean PRs"); then merge without asking.
+- **Fix.** The teammate fixes every blocker and important finding, and the nits it agrees with, then pushes and reports. Review again. After 3 rounds with blockers still open, the PR is blocked: stop and ask the user (see **Asking the user**).
+- **Approve.** A review whose gate passed on the PR's current head, and `gh pr checks` green, makes the PR `approved`. Any push after that, including merging the default branch in, clears the gate: back to `in review`. Ask the user to merge it (see **Asking the user**). The user can give standing approval ("merge clean PRs"); then merge without asking.
 - **Merge.** Merge the way the repo's docs say, else `gh pr merge <n> --merge --delete-branch`. Set the ticket to Done if the tracker did not. Tell the teammate to remove its worktree, then shut it down.
 - **Unblock.** After each merge, tell the teammates with open PRs to merge the default branch into theirs and push. Recompute `ready` and spawn for the newly ready tickets.
 
-A teammate's question for the user comes through you: ask it, and send back the answer.
-
 After every change of state, show the board in one short table: ticket, title, state, PR link, teammate. Done when every ticket is `merged`, or the user has parked it.
+
+### Asking the user
+
+Every decision that waits on the user goes through `AskUserQuestion`, never a question in prose: a PR ready to merge, a PR blocked (3 review rounds with blockers open, CI failing for a reason outside the ticket, conflicts the teammate can't settle), and any teammate's question, which comes through you. The team panel shows the question and marks the teammate whose PR it names as waiting on the user.
+
+- Name the PR as `#<n>` in the question or its header (`Merge #392?`). That is how the panel finds the teammate.
+- Put the PR link, the ticket and the last review's counts in the question or the options' descriptions.
+- Recommended option first. A ready PR: `Merge (Recommended)`, `Hold`. A blocked PR: the ways forward you see, such as another round, merging as is, or parking the ticket.
+- One question per PR, up to 4 per call, so the user settles everything waiting at once. While the question is open you cannot answer teammates, so ask between rounds, not in the middle of one.
+
+Send the teammate the answer, then act on it.
 
 ### Teammate brief
 
@@ -58,7 +67,7 @@ Repo: <root>. Default branch: <default>.
 5. Repeat 4 until the lead says merged. Then remove your worktree and stop.
 
 Work only in your worktree. Push without force: to take the default branch's changes, merge it in.
-When you are blocked or need a decision, message the lead: the lead asks the user.
+When you are blocked or need a decision, message the lead with your PR number: the lead asks the user.
 ```
 
 ## 5. Close

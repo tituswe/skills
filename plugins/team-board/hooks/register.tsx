@@ -28,7 +28,7 @@ const TICK_MS = 5_000
 const activity = atom(
   { plugin: 'team-board', key: 'activity' } as const,
   {} as Record<string, Activity>,
-  { shape: 'activity-3' },
+  { shape: 'activity-4' },
 )
 const tick = atom({ plugin: 'team-board', key: 'tick' } as const, 0, { shape: 'tick-1' })
 const agents = atom({ plugin: 'team-board', key: 'agents' } as const, [] as AgentRow[], {
@@ -81,7 +81,7 @@ export function describe(e: ToolCallInput): string {
     case 'SendMessage':
       return `messaging ${String(a.to ?? '')}`
     case 'AskUserQuestion':
-      return 'waiting for your answer'
+      return askLine((a.questions as Question[] | undefined) ?? [])
     case 'WebSearch':
       return 'searching the web'
     case 'WebFetch':
@@ -90,6 +90,26 @@ export function describe(e: ToolCallInput): string {
       return `using ${toolName(tool)}`
   }
 }
+
+type Question = { question?: string; header?: string }
+
+/** An `AskUserQuestion` call as one line: `asks you: Merge #392?`, and how many more it holds. */
+export function askLine(questions: Question[]): string {
+  const first = firstLine(questions[0]?.question).trim()
+  if (!first) return 'waiting for your answer'
+  const more = questions.length > 1 ? ` (+${questions.length - 1} more)` : ''
+  return `asks you: ${first}${more}`
+}
+
+/** The PRs a text names, in order and once each: `PR 392`, `#392`. */
+export function prsNamed(text: string): number[] {
+  const found = [...text.matchAll(/(?:\bPR\s*#?|#)(\d+)\b/gi)].map(m => Number(m[1]))
+  return [...new Set(found)]
+}
+
+/** The PRs an `AskUserQuestion` call is about, from each question and its header. */
+export const asksAbout = (questions: Question[]) =>
+  prsNamed(questions.map(q => `${q.header ?? ''} ${q.question ?? ''}`).join('\n'))
 
 const elapsed = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000))
@@ -135,15 +155,24 @@ export function nowLine(a: AgentRow, act: Activity | undefined, now: number): st
 
 // ---------- what waits on the person ----------
 
-/** Why a teammate waits on the person, or undefined: an approval, a question, a PR to merge. */
+/** Whether the lead's open question names this PR: the lead asks you about the teammate's work. */
+export const leadAsksAbout = (lead: Activity | undefined, pr: PrRow | undefined) =>
+  pr !== undefined && lead?.kind === 'tool' && lead.isForYou === true && (lead.asksAbout ?? []).includes(pr.number)
+
+/**
+ * Why a teammate waits on the person, or undefined: an approval, a question, the
+ * lead's question about its PR, a PR to merge.
+ */
 export function teammateNeed(
   a: AgentRow,
   act: Activity | undefined,
   pr: PrRow | undefined,
   phase: { label: string },
+  lead?: Activity,
 ): string | undefined {
   if (isLive(a) && act?.kind === 'approval') return act.text
   if (isLive(a) && act?.kind === 'tool' && act.isForYou) return act.text
+  if (pr && leadAsksAbout(lead, pr)) return `the lead asks you about #${pr.number}`
   // A teammate still at work on its PR is not waiting on you, whatever the checks say.
   if (pr && phase.label === 'ready to merge' && !isLive(a)) return `#${pr.number} ready to merge`
   return undefined
@@ -577,7 +606,10 @@ export const register: Register = on => {
     const key = e.agentId ?? LEAD
     const text = describe(e)
     const toolUseId = e.tool_use_id
-    const forYou = e.tool === 'AskUserQuestion' ? { isForYou: true as const } : {}
+    const questions = e.tool === 'AskUserQuestion' ? ((e as { questions?: Question[] }).questions ?? []) : []
+    const about = asksAbout(questions)
+    const forYou =
+      e.tool === 'AskUserQuestion' ? { isForYou: true as const, ...(about.length > 0 ? { asksAbout: about } : {}) } : {}
     quietly(setActivity($, key, { kind: 'tool', text, since: Date.now(), toolUseId, ...forYou }))
     const ran = await next(e)
     quietly(setActivity($, key, { kind: 'done', text, since: Date.now(), toolUseId }))
@@ -618,6 +650,8 @@ export const register: Register = on => {
   // classifier settles, so it is the signal (tool.check's 'ask' is not). It
   // answers nothing: the person's dialog decides.
   on('classic.PermissionRequest', async ($, e, next) => {
+    // A question is its own dialog: keep the question's words, not `waiting for approval`.
+    if (e.tool_name === 'AskUserQuestion') return next(e)
     const text = `waiting for approval: ${toolName(e.tool_name)}`
     quietly(setActivity($, e.agent_id ?? LEAD, { kind: 'approval', text, since: Date.now() }))
     return next(e)
@@ -651,20 +685,23 @@ export const register: Register = on => {
     const leadAgents = all.filter(a => !isTeammate(a) && a.parentId === undefined && isLive(a))
     const viewing = e.props.view.agentId
 
+    const lead = doing[LEAD]
+    const leadWants = leadNeed(lead)
+
     const rows = all
       .filter(isTeammate)
       .map(a => {
         const pr = prFor(a.name, prList, a.description)
         const phase = phaseOf(a, pr, pr ? reviewersOf(pr, all) : 0)
         const act = doing[a.id]
-        const need = teammateNeed(a, act, pr, phase)
+        const need = teammateNeed(a, act, pr, phase, lead)
         return { a, pr, phase, act, need, group: groupOf(a, phase, need) }
       })
       .sort((x, y) => x.group - y.group || x.a.name.localeCompare(y.a.name))
 
-    const lead = doing[LEAD]
-    const leadWants = leadNeed(lead)
-    const waiting = rows.filter(row => row.need).length + (leadWants ? 1 : 0)
+    // The lead's question counts once, however many teammates' PRs it names.
+    const waiting =
+      rows.filter(row => row.need && !leadAsksAbout(lead, row.pr)).length + (leadWants ? 1 : 0)
 
     const leadBlock = (
       <Box flexDirection="column" marginBottom={1}>
