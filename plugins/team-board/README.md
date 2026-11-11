@@ -47,6 +47,7 @@ Teammates must run in-process (`"teammateMode": "in-process"` in `~/.claude/sett
 - `/team` opens or closes the panel. It also opens by itself when the first teammate appears.
 - `/team repo <path>` sets the repo PRs come from (default: the session's folder).
 - Focus it from the keyboard with `ctrl+x tab` (or bind `abovePrompt:focus`, e.g. to `alt+e`). `Tab` walks the names, `Enter` opens that teammate's conversation, `Esc` returns to the prompt.
+- The name whose conversation is on screen is highlighted, the lead's as much as any teammate's.
 
 ## Install
 
