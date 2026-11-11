@@ -23,7 +23,7 @@ const agents = atom({ plugin: 'team-board', key: 'agents' } as const, [] as Agen
   shape: 'agents-1',
 })
 const prs = atom({ plugin: 'team-board', key: 'prs' } as const, [] as PrRow[], {
-  shape: 'prs-1',
+  shape: 'prs-2',
 })
 const board = atom({ plugin: 'team-board', key: 'board' } as const, {} as Board, {
   shape: 'board-1',
@@ -129,7 +129,8 @@ export function teammateNeed(
 ): string | undefined {
   if (isLive(a) && act?.kind === 'approval') return act.text
   if (isLive(a) && act?.kind === 'tool' && act.isForYou) return act.text
-  if (pr && phase.label === 'ready to merge') return `#${pr.number} ready to merge`
+  // A teammate still at work on its PR is not waiting on you, whatever the checks say.
+  if (pr && phase.label === 'ready to merge' && !isLive(a)) return `#${pr.number} ready to merge`
   return undefined
 }
 
@@ -223,6 +224,8 @@ export function parsePrs(stdout: string): PrRow[] {
     state: PrRow['state']
     isDraft: boolean
     statusCheckRollup?: RollupItem[]
+    mergeable?: string
+    mergeStateStatus?: string
   }>
   return raw.map(pr => ({
     number: pr.number,
@@ -230,31 +233,44 @@ export function parsePrs(stdout: string): PrRow[] {
     branch: pr.headRefName,
     state: pr.state,
     isDraft: pr.isDraft,
+    hasConflicts: pr.mergeable === 'CONFLICTING' || pr.mergeStateStatus === 'DIRTY',
     ...summarise(pr.statusCheckRollup ?? []),
   }))
+}
+
+/** Open PRs (with their checks) first, then the recent closed and merged ones not already listed. */
+export function mergePrs(open: PrRow[], recent: PrRow[]): PrRow[] {
+  const seen = new Set(open.map(pr => pr.number))
+  return [...open, ...recent.filter(pr => !seen.has(pr.number))]
+}
+
+/**
+ * Runs one `gh pr list`. Check data is heavy (tens of checks a PR), so only open PRs
+ * carry it: the whole list with checks outgrows what `$.process.run` keeps of stdout.
+ */
+async function listPrs($: Api, repoDir: string, state: 'open' | 'all', fields: string): Promise<PrRow[]> {
+  const run = await $.process.run(
+    ['gh', 'pr', 'list', '--state', state, '--limit', '40', '--json', fields],
+    { cwd: repoDir, timeoutMs: 20_000 },
+  )
+  if (run.exitCode !== 0) throw new Error(firstLine(run.stderr) || `gh exited ${run.exitCode}`)
+  if (run.isStdoutTruncated) throw new Error(`gh pr list --state ${state} output was cut off`)
+  return parsePrs(run.stdout)
 }
 
 async function refreshPrs($: Api) {
   const { repoDir } = await read($, board)
   if (!repoDir) return
   try {
-    const run = await $.process.run(
-      [
-        'gh', 'pr', 'list', '--state', 'all', '--limit', '40',
-        '--json', 'number,title,headRefName,state,isDraft,statusCheckRollup',
-      ],
-      { cwd: repoDir, timeoutMs: 20_000 },
-    )
-    if (run.exitCode !== 0) {
-      const why = firstLine(run.stderr) || `gh exited ${run.exitCode}`
-      await update($, board, b => ({ ...b, error: why }))
-      return
-    }
-    const rows = parsePrs(run.stdout)
+    const [open, recent] = await Promise.all([
+      listPrs($, repoDir, 'open', 'number,title,headRefName,state,isDraft,statusCheckRollup,mergeable,mergeStateStatus'),
+      listPrs($, repoDir, 'all', 'number,title,headRefName,state,isDraft'),
+    ])
+    const rows = mergePrs(open, recent)
     await update($, prs, () => rows)
     await update($, board, b => ({ ...b, error: undefined, fetchedAt: Date.now() }))
   } catch (err) {
-    await update($, board, b => ({ ...b, error: String(err) }))
+    await update($, board, b => ({ ...b, error: err instanceof Error ? err.message : String(err) }))
   }
 }
 
@@ -290,7 +306,16 @@ async function refreshAgents($: Api) {
 /** `abc-479` → `abc-479`; a name without a ticket ID matches on the name itself. */
 const ticketOf = (name: string) => (name.match(/[a-z]+-\d+/i)?.[0] ?? name).toLowerCase()
 
-export function prFor(name: string, list: PrRow[]): PrRow | undefined {
+/** The PR a description names: `Look after PR 401`, `#401`. */
+const namedPr = (text: string) => Number(text.match(/(?:\bPR\s*#?|#)(\d+)\b/i)?.[1] ?? NaN)
+
+/**
+ * A teammate's PR: the one its description names (`Look after PR 401`), else the one
+ * whose branch or title holds the ticket ID in its name (`abc-479`).
+ */
+export function prFor(name: string, list: PrRow[], description = ''): PrRow | undefined {
+  const named = list.find(pr => pr.number === namedPr(description))
+  if (named) return named
   const ticket = ticketOf(name)
   const hits = list.filter(
     pr => pr.branch.toLowerCase().includes(ticket) || pr.title.toLowerCase().includes(ticket),
@@ -312,6 +337,7 @@ export function phaseOf(
   if (!pr) return isLive(a) ? { label: 'coding', color: 'claude' } : { label: 'no PR yet', color: 'subtle' }
   if (pr.state === 'MERGED') return { label: 'merged', color: 'merged' }
   if (pr.state === 'CLOSED') return { label: 'PR closed', color: 'subtle' }
+  if (pr.hasConflicts) return { label: 'merge conflicts', color: 'error' }
   if (reviewers > 0) return { label: 'in review', color: 'suggestion' }
   if (pr.gate === 'fail') return { label: 'fixing', color: 'error' }
   if (pr.gate !== 'pass') return { label: 'awaiting review', color: 'warning' }
@@ -470,7 +496,7 @@ export const register: Register = on => {
     const rows = all
       .filter(isTeammate)
       .map(a => {
-        const pr = prFor(a.name, prList)
+        const pr = prFor(a.name, prList, a.description)
         const phase = phaseOf(a, pr, pr ? reviewersOf(pr, all) : 0)
         const act = doing[a.id]
         const need = teammateNeed(a, act, pr, phase)
@@ -552,6 +578,7 @@ export const register: Register = on => {
                   <Text color={CHECK[pr.ci].color}>{CHECK[pr.ci].mark}</Text>
                   <Text dimColor> · gate </Text>
                   <Text color={CHECK[pr.gate].color}>{CHECK[pr.gate].mark}</Text>
+                  {pr.hasConflicts ? <Text color="error"> · conflicts</Text> : null}
                   {pr.gateNote ? <Text dimColor wrap="truncate-end"> {pr.gateNote}</Text> : null}
                 </Box>
               ) : null}
