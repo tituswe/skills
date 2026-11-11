@@ -2,10 +2,10 @@ import { expect, test } from 'claude-code/testing'
 import type { AgentInfo } from 'claude-code'
 
 import {
-  activityLine, barCells, clockTime, endsInQuestion, groupOf, leadNeed, mergePrs, nowLine, orderWindows, paceLine,
-  parseAccountUsage, parsePrs, percentLabel, phaseOf, prFor, resetLine, teammateNeed,
+  activityLine, askLine, asksAbout, barCells, clockTime, endsInQuestion, groupOf, leadNeed, mergePrs, nowLine, orderWindows, paceLine,
+  parseAccountUsage, parsePrs, percentLabel, phaseOf, prFor, prsNamed, resetLine, teammateNeed,
 } from '../hooks/register'
-import type { PrRow } from '../types'
+import type { Activity, PrRow } from '../types'
 import type { AgentRow } from '../types'
 
 const PANE = {
@@ -210,6 +210,15 @@ test('who waits on the person, and the order rows take', () => {
   expect(endsInQuestion('Done.')).toBe(false)
 
   expect(groupOf(row, { label: 'coding' }, 'waiting for your answer')).toBe(0)
+
+  // The lead's question names a PR: that PR's teammate waits on you too, whatever its own state.
+  const leadAsks: Activity = { kind: 'tool', text: 'asks you: Merge #392?', since: at, isForYou: true, asksAbout: [392] }
+  const idle = { ...row, status: 'idle' }
+  expect(teammateNeed(idle, undefined, open, { label: 'ready to merge' }, leadAsks)).toBe('the lead asks you about #392')
+  expect(teammateNeed(idle, undefined, { ...open, number: 393 }, { label: 'awaiting review' }, leadAsks)).toBeUndefined()
+  expect(teammateNeed(idle, undefined, undefined, { label: 'no PR yet' }, leadAsks)).toBeUndefined()
+  // Once answered (`done`), nothing waits.
+  expect(teammateNeed(idle, undefined, { ...open, number: 393 }, { label: 'awaiting review' }, { ...leadAsks, kind: 'done' })).toBeUndefined()
   expect(groupOf(row, { label: 'coding' }, undefined)).toBe(1)
   expect(groupOf({ ...row, status: 'idle' }, { label: 'awaiting review' }, undefined)).toBe(2)
   expect(groupOf({ ...row, status: 'idle' }, { label: 'merged' }, undefined)).toBe(3)
@@ -266,6 +275,73 @@ test('teammates waiting on you come first, under a count', async ($, on) => {
 
   answer()
   await asking
+})
+
+test('a question says what it asks, and the PRs it names', () => {
+  expect(askLine([])).toBe('waiting for your answer')
+  expect(askLine([{ question: 'Merge #392 (abc-497)?', header: 'Merge' }])).toBe('asks you: Merge #392 (abc-497)?')
+  expect(askLine([{ question: 'Merge #392?' }, { question: 'Unblock #391?' }])).toBe('asks you: Merge #392? (+1 more)')
+  expect(prsNamed('Merge PR 392, then #391 and PR #392 again; issue-7 is not a PR')).toEqual([392, 391])
+  expect(asksAbout([{ header: '#392', question: 'Merge it?' }, { header: 'Blocked', question: 'Stop PR 391?' }])).toEqual([392, 391])
+  expect(asksAbout([{ header: 'Scope', question: 'Ship the export now?' }])).toEqual([])
+})
+
+test("the lead's question shows in the panel, on its own line and on the row of the PR it names", async ($, on) => {
+  const TEAM: AgentInfo[] = [
+    { id: 'a1', teammateId: 'abc-479@team', name: 'abc-479-widget', description: 'abc-479-widget', type: 'teammate', status: 'running' },
+    { id: 'a2', teammateId: 'abc-497@team', name: 'abc-497-empty-input', description: 'abc-497-empty-input', type: 'teammate', status: 'idle' },
+  ]
+  const READY = [
+    {
+      number: 392, title: 'fix (ABC-497)', headRefName: 'fix/abc-497', state: 'OPEN', isDraft: false,
+      statusCheckRollup: [check('server tests'), gate('SUCCESS', '0 blockers, 0 important open')],
+    },
+  ]
+  let answer: () => void = () => undefined
+  const answered = new Promise<void>(resolve => (answer = resolve))
+  on('tool.call', async () => {
+    await answered
+    return { result: {} }
+  })
+  on('classic.PermissionRequest', () => ({}))
+  on('command.register', () => ({ value: { command: 'team' } }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+  on('ui.panes', () => ({ value: [] }))
+  on('agent.list', () => ({ value: TEAM }))
+  on('process.run', (_, e) =>
+    e.argv[0] === 'gh'
+      ? { value: { exitCode: 0, stdout: JSON.stringify(READY), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+      : { value: { exitCode: 0, stdout: '/repo\n', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } },
+  )
+  await $.command.run({ command: 'team', args: 'repo /repo', ...RUN })
+  await $.command.run({ command: 'team', args: '', ...RUN })
+
+  const asking = $.tool.call({
+    tool: 'AskUserQuestion',
+    questions: [{
+      question: 'Merge #392 (abc-497, 0 blockers, 0 important)?', header: 'Merge #392', multiSelect: false,
+      options: [{ label: 'Merge', description: 'Merge it now' }, { label: 'Hold', description: 'Leave it open' }],
+    }],
+  })
+  // The question's own dialog must not turn it into `waiting for approval`.
+  await $.classic.PermissionRequest({ tool_name: 'AskUserQuestion', tool_input: {} })
+  await $.command.run({ command: 'team', args: 'repo', ...RUN }) // a round trip, so the writes land
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  const text = async (pattern: RegExp) => (await ui.find({ type: 'Text', text: pattern }))?.text
+  expect(await text(/need/)).toBe('! 1 needs you') // one question, counted once
+  expect(await text(/asks you: Merge/)).toContain('asks you: Merge #392 (abc-497, 0 blockers, 0 important)?')
+  expect(await text(/lead asks you about/)).toContain('the lead asks you about #392')
+  expect(await text(/approval/)).toBeUndefined()
+  const names = (await ui.findAll({ type: 'Text', text: /^(lead|abc-[\w-]+)$/ })).map(found => found.text)
+  expect(names).toEqual(['lead', 'abc-497-empty-input', 'abc-479-widget']) // lead and its PR's teammate on top
+  await ui.unmount()
+
+  answer()
+  await asking
+  const after = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect((await after.find({ type: 'Text', text: /lead asks you about/ }))?.text).toBeUndefined()
+  await after.unmount()
 })
 
 test('only a real approval dialog marks an agent as waiting on you', async ($, on) => {
