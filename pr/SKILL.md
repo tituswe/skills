@@ -9,36 +9,51 @@ metadata:
     url: "https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md"
 ---
 
+A PR body is read in one minute by someone deciding whether to merge. Write it **terse**: the fewest words and pictures that let them decide. Detail lives elsewhere: test output in CI, click-through screenshots in a PR comment, design in the ticket or ADR.
+
 Use this template for writing the PR body:
 
 ```markdown
 ## Summary
 
-<diagram, diff-sketch, or tree>
+<one sentence: what changes>
+
+<one diagram, diff-sketch, or tree>
 
 ## Evidence
 
-- **Before:** <screenshot/output/failing test run>
-  **After:** <screenshot/output/passing test run>
+- **Before:** <screenshot/output/failing test>
+  **After:** <screenshot/output/passing test>
 
 ## Merge Danger
 
-**Door:** <one-way or two-way>
+**Door:** <one-way or two-way>, <one clause why>
 
-<optional: description>
-
-**Blast Radius:** <one-word description>
-
-<optional: potential ramifications of merge>
+**Blast Radius:** <one word>, <one clause naming who or what it touches>
 ```
+
+## Limits
+
+| Part | Limit |
+|---|---|
+| Summary | One sentence, then one visual. |
+| Evidence | One before/after pair. At most 2 screenshots in the body; link to the rest. |
+| Merge Danger | Two lines. |
+| Whole body, visuals excluded | 120 words. |
+
+Done when every limit holds. Over a limit: cut, or link to where the detail lives.
+
+## Style
+
+- Short sentences, plain words, the domain language from `GLOSSARY.md`.
+- State what changes for the user or the code. Leave out how you worked, what you checked, file lists, test counts and repeats of the ticket.
+- Bullets only for parallel items, one line each.
 
 ## Sections
 
-Skip all preambles and keep prose brief. Use the user's domain language from `GLOSSARY.md`.
-
 ### Summary
 
-Pick the smallest view that makes the key point clear.
+One sentence on what changes, then the single smallest view that makes it clear.
 
 - Show logic or an algorithm as pseudocode:
 
@@ -153,19 +168,18 @@ function expandSkill(command: string): string {
 
 Place each visual next to the short text it supports. Keep only the calls, files, props, states, and boundaries needed to answer the user's current question or the options to resolve the current discussion point.
 
-You may use one of these, you may use several, it is unlikely you will use all of them. Use your judgement and don't overwhelm the user.
+Use one view. Add a second only when the change has two parts a reviewer must see separately, such as a server rule and the screen that shows it.
 
 ### Evidence
 
-Concrete evidence that the change works. Show a before and after.
+One before/after pair that proves the change works.
 
-Screenshots are S-tier - when the environment is set up for it and the change is visual.
-Annotate them directly: box, underline, or highlight what changed. Add a caption if needed.
+Screenshots are S-tier when the change is visual. Annotate them: box, underline or highlight what changed. Put at most 2 in the body; a click-through with more lives in its own PR comment, linked in one line.
 
-Execution-based evidence is A-tier. Test results, console output. Show the exact test that now fails and passes, using pseudocode.
+Execution-based evidence is A-tier: name the one test that fails before and passes after, in one line. CI shows the rest.
 
 ### Merge Danger
 
-Describe whether it's a one-way or two-way door. You can walk back through two-way doors, but not one-way doors. A PR that is cheap to roll back is lower risk. Changes that involve destructive actions or hard-to-reverse decisions are one-way doors.
+**Door:** a two-way door can be walked back by reverting; a one-way door can't (a migration that drops data, a message sent, a destructive action). Give the reason in one clause.
 
-The blast radius is the potential impact or scope of the changes introduced by this PR. Consider all possibilities. Examples are layout shift, breakages for consumers, mobile responsiveness, etc.
+**Blast radius:** the scope of what could break, in one word plus one clause naming who or what it touches: e.g. "Contained, the student profile's Classes card." Consider layout shift, consumers of a changed API, mobile and existing data, but write down only what applies.
