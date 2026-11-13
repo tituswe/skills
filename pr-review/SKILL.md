@@ -6,7 +6,7 @@ argument-hint: "[PR number or URL]"
 
 # PR review
 
-Review one PR with a parallel reviewer per **pillar**, **verify** every finding against the code, then post the survivors as inline PR comments, each labelled with its pillar. A short list of proven findings beats a long list of maybes.
+Review one PR with a parallel reviewer per **pillar**, **verify** every finding against the code, then post the survivors as terse inline PR comments, each labelled with its pillar. A short list of proven findings beats a long list of maybes.
 
 The review ends by setting the **gate**: a `pr-review` commit status on the head commit, `success` or `failure`. Where the repo requires that status, the PR can't merge until a review passes. A status belongs to one commit, so every push clears the gate until the next review.
 
@@ -66,7 +66,9 @@ Done when every finding is proven or dropped, and every earlier blocker and impo
 
 ## 5. Post
 
-**Screenshots first.** Review comments take no attachments, so upload them in one PR comment and reuse the hosted URLs. Write `shots.md` with each finding's title, then each click-through flow's name, above `![<title>](<path>)`, then:
+Post **terse**: the author reads each comment in seconds and knows what breaks and what to change. The scenario and evidence you verified stay with you; the post carries the title, what breaks, and the fix.
+
+**Screenshots first.** Review comments take no attachments, so upload the screenshots you will post in one PR comment and reuse the hosted URLs: one per UI finding, one per failed flow, and at most 2 for passed flows. Write `shots.md` with each one's title above `![<title>](<path>)`, then:
 
 ```bash
 gh pr comment <n> --body-file shots.md --attach '<path>#<title>' --attach '<path>#<title>'
@@ -97,38 +99,47 @@ Inline comments sit on lines inside the diff's hunks, new side. Findings on othe
 Each inline comment:
 
 ```markdown
-**<Pillar> · <severity>:** <one-line title>
+**<Pillar> · <severity>:** <title>
 
-<the failure scenario, one or two sentences>
+<what breaks, one sentence>
 
 ![<title>](<hosted URL>)
 
-Fix: <one line, or a short diff>
+Fix: <one line>
 ```
 
-The image line is for findings with a screenshot.
+The image line is for findings with a screenshot. For example:
 
-For example: `**Security · blocker:** Webhook accepts unsigned payloads.`
+```markdown
+**Security · blocker:** Webhook accepts unsigned payloads
 
-The summary:
+Anyone who finds the URL can post a fake payment and mark an invoice paid.
+
+Fix: check the signature header before parsing the body.
+```
+
+The summary carries only what has no inline comment in this review:
 
 ```markdown
 **PR review** · Gate: <pass | fail> · Effort <1-5>/5 · Merge risk: <low | medium | high>
 
-<what the change does, one sentence>
+<what the PR does, one sentence>
 
-Pillars: <run>. Skipped: <pillar> (<reason>).
-Inline: <n> blockers, <n> important, <n> nits.
+<n> blockers · <n> important · <n> nits. Skipped: <pillar> (<reason>).
 
-<details><summary>Still open from earlier rounds (<n>)</summary>
+**Still open from earlier rounds**
 
-- **<Pillar> · <severity>:** <title> `path:line`. <what still fails>
+- **<Pillar> · <severity>:** <title> `path:line`
 
-</details>
+**Outside the diff**
 
-<details><summary>Outside the diff (<n>)</summary>
+- **<Pillar> · <blocker | important>:** <title> `path:line`
+  - <what breaks, one sentence>
+  - Fix: <one line>
 
-- **<Pillar> · <severity>:** <title> `path:line`. <scenario>
+<details><summary>Nits (<n>)</summary>
+
+- **<Pillar>:** <title> `path:line`
 
 </details>
 
@@ -147,7 +158,23 @@ Inline: <n> blockers, <n> important, <n> nits.
 </details>
 ```
 
-Skip empty parts. With no findings, post the summary alone. Done when the review is on the PR.
+The counts cover every open finding: inline, outside the diff and still open. Skipped names only pillars that did not run. Skip empty parts. With no findings, post the summary alone.
+
+### Limits
+
+| Part | Limit |
+|---|---|
+| Title | One line, 10 words at most. |
+| Finding | Title, one sentence on what breaks, a one-line fix: 40 words at most. One scenario, the clearest. Two root causes are two findings. |
+| Summary top | The header, one sentence of 25 words at most, the counts line. |
+| Still open, nits, pre-existing | One line each: title and `path:line`. 5 nits at most in the whole review, the best. |
+| Click-through | One line per flow, 10 words at most after the name. Images only under failed flows and at most 2 passes. |
+
+- Say what breaks for a user or the data, in the repo's domain words.
+- Cite a rule or ADR by its name; its reasoning lives there.
+- Leave out how the code works, what you checked, and what the PR body already says.
+
+Check every limit before posting; over one, cut to the clearest scenario. Done when every limit holds and the review is on the PR.
 
 ## 6. Set the gate
 
